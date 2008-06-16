@@ -66,6 +66,7 @@ static ReturnValueDescription URG_RETURN_DESCRIPTION[] = {
     { URG::READ_FAILED,                "READ_FAILED" },
     { URG::READ_TIMEOUT,               "READ_TIMEOUT" },
     { URG::WRITE_FAILED,               "WRITE_FAILED" },
+    { URG::WRITE_TIMEOUT,              "WRITE_TIMEOUT" },
     { URG::BAD_RATE,                   "BAD_RATE" },
     { URG::BAD_HOST_RATE,              "rate not supported on this host" },
     { URG::NOT_SCIP2_CAPABLE,          "this device is not SCIP2. Upgrade firmware" },
@@ -188,15 +189,32 @@ static unsigned int parseInt(int bytes, char const*& s){
     return ret;
 }
 
-bool URG::write(char const* string)
+bool URG::write(char const* string, int timeout)
 {
     char buffer[MAX_PACKET_SIZE];
     sprintf(buffer, "\n%s\n", string);
-    //cerr << "sending '" << printable_com(buffer) << "'" << endl;
-
     size_t cmd_size = strlen(buffer);
-    if (::write(fd, buffer, cmd_size) != cmd_size)
-        return error(WRITE_FAILED);
+
+    size_t written_size = 0;
+    while (written_size != cmd_size)
+    {
+        fd_set set;
+        FD_ZERO(&set);
+        FD_SET(fd, &set);
+
+        timeval timeout_spec = { timeout / 1000, (timeout % 1000) * 1000 };
+        int ret = select(fd + 1, NULL, &set, NULL, &timeout_spec);
+        if (ret < 0)
+            return error(WRITE_FAILED);
+        else if (ret == 0)
+            return error(WRITE_TIMEOUT);
+
+        int single_write = ::write(fd, buffer + written_size, cmd_size - written_size);
+        if (single_write < 0)
+            return error(WRITE_FAILED);
+
+        written_size += single_write;
+    }
 
     return true;
 }

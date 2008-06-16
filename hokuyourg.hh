@@ -76,6 +76,7 @@ public:
     NOT_SCIP2_CAPABLE           = 128,
     BAD_HOST_RATE               = 129,
     INCONSISTEN_RANGE_COUNT     = 130,
+    WRITE_TIMEOUT               = 131,
 
     UNKNOWN                     = 200,
     INTERNAL_ERROR              = 201,
@@ -107,7 +108,13 @@ private:
   bool readInfo();
   bool simpleCommand(SimpleCommand const& cmd, int timeout = 1000);
   int read(char* buffer, size_t buffer_size);
-  bool write(char const* string);
+  /** Write the command defined in \c string. This command will be internally
+   * enclosed in \n, so it does not need to be done already.
+   *
+   * \c timeout is how much time, in milliseconds, the driver can wait for the
+   * file descriptor to be available for writing
+   */
+  bool write(char const* string, int timeout = 1000);
   static void parseReading(RangeReading& r, char* buffer);
 
   bool error(ERROR_CODES code);

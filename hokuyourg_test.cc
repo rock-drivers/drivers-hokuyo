@@ -37,7 +37,7 @@ int main (int argc, const char** argv){
   URG::RangeReading ranges;
   timeval reftime;
   gettimeofday(&reftime, 0);
-  for (int i = 0; i < 100; ++i)
+  for (int i = 0; i < 20; ++i)
   {
       if (!urg.readRanges(ranges, 1000))
       {
@@ -51,7 +51,7 @@ int main (int argc, const char** argv){
   }
 
   urg.stopAcquisition();
-  for (int i = 0; i < 100; ++i)
+  for (int i = 0; i < 20; ++i)
   {
       if (!urg.readRanges(ranges, 1000))
       {

@@ -633,6 +633,11 @@ bool URG::startAcquisition(int nScans, int startStep, int endStep, int scanInter
     if (!URG::simpleCommand(URG_BM))
         return false;
 
+    if (startStep == -1)
+        startStep = m_info.stepMin;
+    if (endStep == -1)
+        endStep = m_info.stepMax;
+
     cerr << "switched on laser ..." << endl;
 
     char command[1024];

@@ -27,7 +27,7 @@ int main (int argc, const char** argv){
       return 1;
   }
 
-  if (!urg.startAcquisition(0, 0, 768))
+  if (!urg.startAcquisition(0))
   {
       cerr << "cannot start acquisition: " << urg.errorString() << endl;
       perror("errno is");

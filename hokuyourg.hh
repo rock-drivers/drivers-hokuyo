@@ -138,13 +138,17 @@ public:
 
   /** Start continuous acquisition. Call readRanges() to get a frame.
    *
-   * @arg nFrames the count of frames to acquire. Set to 0 to do continuous acquisition 
-   * @arg scanInterval the count of scans to ignore between two reported scans. Set to 0 to do continuous acquisition 
-   * @arg startStep the step at which to start reading ranges. See the device information to get minimal and maximal readable steps 
-   * @arg endStep the step at which to stop reading ranges. See the device information to get minimal and maximal readable steps
+   * @arg nFrames the count of frames to acquire
+   * @arg startStep the step at which to start reading ranges. See the device
+   *      information to get minimal and maximal readable steps. Set to -1 to use
+   *      the first readable step defined for the device.
+   * @arg endStep the step at which to stop reading ranges. See the device
+   *      information to get minimal and maximal readable steps. Set to -1 to use
+   *      the first readable step defined for the device.
+   * @arg scanInterval the count of scans to ignore between two reported scans.
    * @arg clusterCount how many ranges the device should merge into one reported range
    */
-  bool startAcquisition(int nScans, int startStep, int endStep, int scanInterval = 0, int clusterCount = 1);
+  bool startAcquisition(int nScans, int startStep = -1, int endStep = -1, int scanInterval = 0, int clusterCount = 1);
   /** Stop continuous acquisition */
   bool stopAcquisition();
   /** Gets a range reading and decodes it into \c range. If timeout is

@@ -27,7 +27,7 @@ int main (int argc, const char** argv){
       return 1;
   }
 
-  if (!urg.startAcquisition(0))
+  if (!urg.startAcquisition(0, -1, -1, 0, 2))
   {
       cerr << "cannot start acquisition: " << urg.errorString() << endl;
       perror("errno is");
@@ -46,8 +46,25 @@ int main (int argc, const char** argv){
           return 1;
       }
 
+      int too_far = 0;
+      int bad_ranges = 0;
+      for (int range_idx = 0; range_idx < ranges.count; ++range_idx)
+      {
+          unsigned int val = ranges.ranges[range_idx];
+          if (val < 20)
+          {
+              if (val == URG::TOO_FAR)
+                  too_far++;
+              else
+                  bad_ranges++;
+          }
+      }
+
       int dt = (ranges.cpu_timestamp.tv_sec - reftime.tv_sec) * 1000 + ranges.cpu_timestamp.tv_usec / 1000;
-      cerr << i << " " << ranges.device_timestamp << " " << dt << endl;
+      cerr << i << " " << ranges.device_timestamp << " " << dt << "\n"
+          << "  too far: " << too_far << "\n"
+          << "  invalid: " << bad_ranges << endl;
+
   }
 
   urg.stopAcquisition();

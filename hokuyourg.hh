@@ -31,10 +31,10 @@ public:
       NON_MEASURABLE_STEP = 19
   };
   struct RangeReading {
-      int device_timestamp;
+      int     device_timestamp;
       timeval cpu_timestamp;
 
-      int rangeCount;
+      int count;
       unsigned short ranges[MAX_BEAMS];
       unsigned short startStep, endStep, clusterCount;
   };

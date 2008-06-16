@@ -713,11 +713,11 @@ bool URG::readRanges(RangeReading& range, int timeout)
         return error(BAD_REPLY);
 
     char const* data = timestamp + 2;
-    size_t const expected_count = (range.endStep - range.startStep) / range.clusterCount;
+    size_t const expected_count = (range.endStep - range.startStep + 1) / range.clusterCount;
     for (size_t i = 0; i < expected_count; ++i) {
         if (data == 0)
         {
-            cerr << "read " << range.rangeCount << " ranges, expected " << (range.endStep - range.startStep) / range.clusterCount << endl;
+            cerr << "read " << i << " ranges, expected " << expected_count << endl;
             return error(INCONSISTEN_RANGE_COUNT);
         }
 
@@ -726,7 +726,12 @@ bool URG::readRanges(RangeReading& range, int timeout)
         //else
         //    cerr << (long)data << endl;
     }
-    range.rangeCount=expected_count;
+    if (data && data[1] != '\n')
+    {
+        cerr << "expected " << expected_count << " ranges, but got more" << endl;
+        cerr << printable_com(data) << endl;
+    }
+    range.count = expected_count;
 
     return true;
 }

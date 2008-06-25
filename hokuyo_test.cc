@@ -1,4 +1,4 @@
-#include "hokuyourg.hh"
+#include "hokuyo.hh"
 #include <iostream>
 #include <sys/time.h>
 #include <time.h>

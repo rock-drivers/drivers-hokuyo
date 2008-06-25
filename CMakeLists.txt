@@ -1,4 +1,15 @@
-ADD_LIBRARY(hokuyo SHARED hokuyourg.cc)
-ADD_EXECUTABLE(hokuyo_test hokuyourg_test.cc)
+PROJECT(hokuyo)
+SET(PROJECT_VERSION 1.0)
+
+CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+
+ADD_LIBRARY(hokuyo SHARED hokuyo.cc)
+ADD_EXECUTABLE(hokuyo_test hokuyo_test.cc)
 TARGET_LINK_LIBRARIES(hokuyo_test hokuyo)
+INSTALL(TARGETS hokuyo  LIBRARY DESTINATION lib)
+INSTALL(FILES hokuyo.hh DESTINATION include)
+
+
+CONFIGURE_FILE(hokuyo.pc.in hokuyo.pc @ONLY)
+INSTALL(FILES ${CMAKE_BINARY_DIR}/hokuyo.pc DESTINATION lib/pkgconfig)
 

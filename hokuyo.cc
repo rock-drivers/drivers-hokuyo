@@ -1,4 +1,4 @@
-#include "hokuyourg.hh"
+#include "hokuyo.hh"
 
 #include <map>
 #include <string>

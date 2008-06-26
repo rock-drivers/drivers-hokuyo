@@ -459,7 +459,12 @@ bool URG::parseErrorCode(char const* code, StatusCode const* specific_codes)
     StatusCode const* try_codes[3] = { URG_COMMON_OK, specific_codes, URG_COMMON_STATUS_CODES };
 
     if (code[1] == '\n')
-        return error(NOT_SCIP2_CAPABLE);
+    {
+        if (code[0] == '0')
+            return true;
+        else
+            return error(NOT_SCIP2_CAPABLE);
+    }
 
     m_last_status[0] = code[0];
     m_last_status[1] = code[1];

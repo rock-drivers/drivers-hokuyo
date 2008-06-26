@@ -665,7 +665,7 @@ bool URG::startAcquisition(int nScans, int startStep, int endStep, int scanInter
     return true;
 }
 
-bool URG::readRanges(RangeReading& range, int timeout)
+bool URG::readRanges(DFKI::LaserReadings& range, int timeout)
 {
     if (timeout == -1)
         timeout = 2 * 60000 / m_info.motorSpeed;
@@ -676,7 +676,11 @@ bool URG::readRanges(RangeReading& range, int timeout)
     int packet_size = readAnswer(buffer, MAX_PACKET_SIZE, expected_cmds, timeout);
     if (packet_size < 0)
         return false;
-    gettimeofday(&range.cpu_timestamp, 0);
+
+    timeval tv;
+    gettimeofday(&tv, 0);
+    range.stamp.seconds = tv.tv_sec;
+    range.stamp.microseconds = tv.tv_usec;
 
     buffer[packet_size] = 0;
 
@@ -699,21 +703,26 @@ bool URG::readRanges(RangeReading& range, int timeout)
     }
 
     // Read step setup from the command echo
+    int startStep, endStep, clusterCount;
     { char v[5];
         v[4]=0;
-        strncpy(v,buffer + 2,4);  range.startStep=atoi(v);
-        strncpy(v,buffer + 6,4);  range.endStep=atoi(v);
+        strncpy(v,buffer + 2,4);  startStep = atoi(v);
+        strncpy(v,buffer + 6,4);  endStep   = atoi(v);
         v[2]=0;
-        strncpy(v,buffer + 10,2); range.clusterCount=atoi(v);
+        strncpy(v,buffer + 10,2); clusterCount = atoi(v);
     }
+    size_t const expected_count = (endStep - startStep + 1) / clusterCount;
+    range.min   = startStep / clusterCount;
+    range.count = expected_count;
+    range.resolution = m_info.resolution / clusterCount;
+    range.speed = 60000000 / (m_info.motorSpeed * m_info.resolution);
 
     char const* timestamp = buffer + MDMS_COMMAND_LENGTH + 5;
-    range.device_timestamp = parseInt(4, timestamp);
+    int device_timestamp = parseInt(4, timestamp);
     if (!timestamp)
         return error(BAD_REPLY);
 
     char const* data = timestamp + 2;
-    size_t const expected_count = (range.endStep - range.startStep + 1) / range.clusterCount;
     for (size_t i = 0; i < expected_count; ++i) {
         if (data == 0)
         {
@@ -721,17 +730,13 @@ bool URG::readRanges(RangeReading& range, int timeout)
             return error(INCONSISTEN_RANGE_COUNT);
         }
 
-        //cerr << printable_com(string(data, 3)) << endl;
         range.ranges[i] = parseInt(3, data);
-        //else
-        //    cerr << (long)data << endl;
     }
     if (data && data[1] != '\n')
     {
         cerr << "expected " << expected_count << " ranges, but got more" << endl;
         cerr << printable_com(data) << endl;
     }
-    range.count = expected_count;
 
     return true;
 }
@@ -798,9 +803,9 @@ bool URG::open(const char* filename){
 
     // m_info.stepCount is not the same value ... I don't actually know what it is ...
     size_t stepCount = m_info.stepMax - m_info.stepMin;
-    if (stepCount > MAX_BEAMS)
+    if (stepCount > DFKI_LASER_MAX_READINGS)
     {
-        cerr << "device is capable of " << stepCount << " steps, but MAX_BEAMS == " << MAX_BEAMS << ". Update the code" << endl;
+        cerr << "device is capable of " << stepCount << " steps, but DFKI_LASER_MAX_READINGS == " << DFKI_LASER_MAX_READINGS << ". Update the code" << endl;
         return error(INTERNAL_ERROR);
     }
 

@@ -5,18 +5,32 @@
 #include <string>
 #include <iosfwd>
 #include <sys/types.h>
+#include <toolkit/dfkiToolkitTypes.hpp>
 
+/** This class implements a driver for the Hokuyo laser range finders.
+ *
+ * Note on error handling: all methods return a boolean argument. If the
+ * returned value is true, everything is fine.  Otherwise, an error occured and
+ * the exact error code is returned by URG::error(). URG::ERROR_CODES lists all
+ * error codes and URG::errorString(int) can return a string describing the
+ * exact error.
+ */
 class URG {
 public:
   struct StatusCode;
   struct SimpleCommand;
 
-  static const int MAX_BEAMS             = 768;
+  /** The maximum packet size. Internal use only */
   static const int MAX_PACKET_SIZE       = 8192;
+  /** For internal use */
   static const int MDMS_COMMAND_LENGTH   = 15;
+  /** For internal use */
   static const int MDMS_TIMESTAMP_OFFSET = MDMS_COMMAND_LENGTH + 5;
+  /** For internal use */
   static const int MDMS_DATA_OFFSET      = MDMS_TIMESTAMP_OFFSET + 6;
 
+  /** Special values for the ranges. If a range has one of these values, then
+   * it is not valid and the value declares what is going on */
   enum RANGE_ERRORS {
       TOO_FAR = 0,
       LOW_INTENSITY0 = 1,
@@ -30,15 +44,10 @@ public:
       STRONG_REFLECTIVE_OBJECT = 18,
       NON_MEASURABLE_STEP = 19
   };
-  struct RangeReading {
-      int     device_timestamp;
-      timeval cpu_timestamp;
 
-      int count;
-      unsigned short ranges[MAX_BEAMS];
-      unsigned short startStep, endStep, clusterCount;
-  };
-
+  /** This structure is returned by getInfo() to represent various informations
+   * on the device.
+   */
   struct DeviceInfo {
       DeviceInfo()
           : dMin(0), dMax(0), resolution(0), stepMin(0), stepMax(0), stepFront(0), motorSpeed(0) { }
@@ -53,6 +62,7 @@ public:
       int motorSpeed; /// Motor speed in turn per minute
   };
 
+  /** All the possible error codes that can be returned by URG::error() */
   enum ERROR_CODES {
     OK                  = 0,
     
@@ -85,15 +95,19 @@ public:
   };
 
 private:
-  int fd;
-  int baudrate;
+  /** The file descriptor, or -1 if it is not initialized */
+  int         fd;
+  /** The baudrate */
+  int         baudrate;
   char        m_last_status[3];
+  /** The current error */
   ERROR_CODES m_error;
+  /** The device info. This is read on initialization */
   DeviceInfo  m_info;
 
-  // Device capabilities
-  /// Used for reading
+  /** Internal buffer used for reading packets */
   char internal_buffer[MAX_PACKET_SIZE];
+  /** The current count of bytes left in \c internal_buffer */
   size_t internal_buffer_size;
 
   /** \overloaded */
@@ -115,7 +129,6 @@ private:
    * file descriptor to be available for writing
    */
   bool write(char const* string, int timeout = 1000);
-  static void parseReading(RangeReading& r, char* buffer);
 
   bool error(ERROR_CODES code);
   bool parseErrorCode(char const* code, StatusCode const* specific_codes);
@@ -128,12 +141,13 @@ public:
   /** Open the device, reset it and read device information. After this call,
    * the baud rate is 19200 and the device is not scanning */
   bool open(char const* filename);
-  bool reset();
   /** Performs a full reset of the device. After this call, the device baud
    * rate is 19200 and it is not scanning */
   bool fullReset();
   /** Closes the device */
   bool close();
+  /** Returns the device info structure. This does not access the device,
+   * as the structure is read at initialization in open() */
   DeviceInfo getInfo() const { return m_info; };
 
   /** Start continuous acquisition. Call readRanges() to get a frame.
@@ -154,7 +168,7 @@ public:
   /** Gets a range reading and decodes it into \c range. If timeout is
    * positive, it is how much time, in milliseconds, we should wait for an
    * answer. If it is -1, it is set to twice the scan duration */
-  bool readRanges(RangeReading& range, int timeout = -1);
+  bool readRanges(DFKI::LaserReadings& range, int timeout = -1);
   /** Sets the device baudrate (only possible for serial devices). +brate+ is
    * the baud rate in bps, can be one of 19200, 57600 and 115200 */
   bool setBaudrate(int brate);

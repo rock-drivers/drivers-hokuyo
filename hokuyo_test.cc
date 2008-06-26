@@ -34,7 +34,7 @@ int main (int argc, const char** argv){
       return 1;
   }
 
-  URG::RangeReading ranges;
+  DFKI::LaserReadings ranges;
   timeval reftime;
   gettimeofday(&reftime, 0);
   for (int i = 0; i < 20; ++i)
@@ -60,8 +60,8 @@ int main (int argc, const char** argv){
           }
       }
 
-      int dt = (ranges.cpu_timestamp.tv_sec - reftime.tv_sec) * 1000 + ranges.cpu_timestamp.tv_usec / 1000;
-      cerr << i << " " << ranges.device_timestamp << " " << dt << "\n"
+      int dt = (ranges.stamp.seconds - reftime.tv_sec) * 1000 + ranges.stamp.microseconds / 1000;
+      cerr << i << " " << dt << "\n"
           << "  too far: " << too_far << "\n"
           << "  invalid: " << bad_ranges << endl;
 

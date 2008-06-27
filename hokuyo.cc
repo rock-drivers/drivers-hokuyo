@@ -610,11 +610,12 @@ bool URG::setBaudrate(int brate){
             return error(URG::BAD_HOST_RATE);;
 
         baudrate = brate;
+        
+        // Have to wait after the reset, in order to get the communication link reset
+        timespec tv = { 1, 0 };
+        nanosleep(&tv, &tv);
+        return true;
     }
-
-    // Have to wait after the reset, in order to get the communication link reset
-    timespec tv = { 1, 0 };
-    nanosleep(&tv, &tv);
 
     if (!URG::readInfo())
         return error(BAD_STATE);

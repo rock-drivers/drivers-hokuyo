@@ -591,6 +591,12 @@ bool URG::setBaudrate(int brate){
     if (!newbrate)
         return error(BAD_RATE);
 
+    if (fd == -1)
+    {
+        this->baudrate = brate;
+        return true;
+    }
+
 
     //switch to current baudrate
     if(! set_host_baudrate(fd, tc_baudrateSetting(baudrate)))
@@ -797,12 +803,16 @@ bool URG::open(const char* filename){
     if(tcsetattr(fd,TCSADRAIN,&tio)!=0)
         return false;
 
+    int desired_baudrate = baudrate;
     // Reset the scanner
     if (! fullReset())
         return false;
 
-    if (! setBaudrate(baudrate))
-        return false;
+    if (desired_baudrate != baudrate)
+    {
+        if (! setBaudrate(desired_baudrate))
+            return false;
+    }
     if (! readInfo())
         return false;
 

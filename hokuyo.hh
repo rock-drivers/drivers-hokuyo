@@ -170,7 +170,11 @@ public:
    * answer. If it is -1, it is set to twice the scan duration */
   bool readRanges(DFKI::LaserReadings& range, int timeout = -1);
   /** Sets the device baudrate (only possible for serial devices). +brate+ is
-   * the baud rate in bps, can be one of 19200, 57600 and 115200 */
+   * the baud rate in bps, can be one of 19200, 57600 and 115200
+   *
+   * If the device is not open yet, this baud rate will be set on startup (i.e.
+   * in open())
+   */
   bool setBaudrate(int brate);
 
   /** Returns the last error code registered by the driver */

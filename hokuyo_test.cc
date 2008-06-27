@@ -12,6 +12,13 @@ int main (int argc, const char** argv){
   }
 
   URG urg;
+  if (!urg.setBaudrate(115200))
+  {
+      cerr << "cannot set baudrate: " << urg.errorString() << endl;
+      perror("errno is");
+      return 1;
+  }
+
   if (!urg.open(argv[1]))
   {
       cerr << "cannot open device: " << urg.errorString() << endl;
@@ -19,13 +26,6 @@ int main (int argc, const char** argv){
       return 1;
   }
   cout << urg.getInfo() << endl;
-
-  if (!urg.setBaudrate(115200))
-  {
-      cerr << "cannot set baudrate: " << urg.errorString() << endl;
-      perror("errno is");
-      return 1;
-  }
 
   if (!urg.startAcquisition(0, -1, -1, 0, 2))
   {

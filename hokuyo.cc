@@ -748,6 +748,7 @@ bool URG::readRanges(DFKI::LaserReadings& range, int timeout)
     {
         cerr << "expected " << expected_count << " ranges, but got more" << endl;
         cerr << printable_com(data) << endl;
+        return error(BAD_REPLY);
     }
 
     return true;

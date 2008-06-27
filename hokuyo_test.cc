@@ -39,7 +39,7 @@ int main (int argc, const char** argv){
   gettimeofday(&reftime, 0);
   for (int i = 0; i < 20; ++i)
   {
-      if (!urg.readRanges(ranges, 1000))
+      if (!urg.readRanges(ranges))
       {
           cerr << "failed to read ranges: " << urg.errorString() << endl;
           perror("errno is");
@@ -70,7 +70,7 @@ int main (int argc, const char** argv){
   urg.stopAcquisition();
   for (int i = 0; i < 20; ++i)
   {
-      if (!urg.readRanges(ranges, 1000))
+      if (!urg.readRanges(ranges))
       {
           cerr << "the device did stop scanning ..." << endl;
           break;

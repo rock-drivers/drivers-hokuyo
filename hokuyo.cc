@@ -532,11 +532,11 @@ bool URG::fullReset() {
             return error(URG::BAD_HOST_RATE);;
 
         m_error = OK;
-        if (simpleCommand(URG_SCIP2))
+        if (simpleCommand(URG_SCIP2, 10000))
         {
-            if (!simpleCommand(URG_QUIT))
+            if (!simpleCommand(URG_QUIT, 10000))
                 return false;
-            if (!simpleCommand(URG_RESET))
+            if (!simpleCommand(URG_RESET, 10000))
                 return false;
             break;
         }

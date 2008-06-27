@@ -445,7 +445,7 @@ int URG::read(char* buffer, size_t buffer_size) {
         if (b == buffer + MAX_PACKET_SIZE)
         {
             // something wrong on the line ...
-            fprintf(stderr, "current packet too large (%i > %i)", b - buffer, MAX_PACKET_SIZE);
+            fprintf(stderr, "current packet too large (%i > %i)\n", b - buffer, MAX_PACKET_SIZE);
             error(READ_FAILED);
             return -1;
         }

@@ -769,13 +769,12 @@ bool URG::close() {
     return true;
 }
 
-bool URG::open(const char* filename){
-    //first open nonblockiong and test baudrate
+bool URG::open(std::string const& filename){
     struct termios tio;
 
-    fd = ::open(filename, O_RDWR | O_NOCTTY | O_SYNC | O_NONBLOCK );
+    fd = ::open(filename.c_str(), O_RDWR | O_NOCTTY | O_SYNC | O_NONBLOCK );
     if (fd < 0){
-        printf("Failed to open %s: ", filename);
+        printf("Failed to open %s: ", filename.c_str());
         perror("");
         return false;
     }

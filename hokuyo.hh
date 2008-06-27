@@ -140,7 +140,7 @@ public:
 
   /** Open the device, reset it and read device information. After this call,
    * the baud rate is 19200 and the device is not scanning */
-  bool open(char const* filename);
+  bool open(std::string const& filename);
   /** Performs a full reset of the device. After this call, the device baud
    * rate is 19200 and it is not scanning */
   bool fullReset();

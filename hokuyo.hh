@@ -5,7 +5,7 @@
 #include <string>
 #include <iosfwd>
 #include <sys/types.h>
-#include <toolkit/dfkiToolkitTypes.hpp>
+#include <dfki/laser_readings.h>
 
 /** This class implements a driver for the Hokuyo laser range finders.
  *

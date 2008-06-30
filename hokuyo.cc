@@ -192,7 +192,7 @@ static unsigned int parseInt(int bytes, char const*& s){
 bool URG::write(char const* string, int timeout)
 {
     char buffer[MAX_PACKET_SIZE];
-    sprintf(buffer, "\n%s\n", string);
+    snprintf(buffer, MAX_PACKET_SIZE, "\n%s\n", string);
     size_t cmd_size = strlen(buffer);
 
     size_t written_size = 0;

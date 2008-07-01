@@ -138,6 +138,8 @@ public:
   URG();
   ~URG();
 
+  int getFD() const;
+
   /** Open the device, reset it and read device information. After this call,
    * the baud rate is 19200 and the device is not scanning */
   bool open(std::string const& filename);

@@ -165,6 +165,7 @@ URG::URG()
         m_last_status[2] = 0;
 }
 
+int URG::getFD() const { return fd; }
 
 // Parses an int of x bytes in the hokyo format
 static unsigned int parseInt(int bytes, char const*& s){

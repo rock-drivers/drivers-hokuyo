@@ -48,7 +48,7 @@ int main (int argc, const char** argv){
 
       int too_far = 0;
       int bad_ranges = 0;
-      for (int range_idx = 0; range_idx < ranges.count; ++range_idx)
+      for (int range_idx = 0; range_idx < ranges.ranges.size(); ++range_idx)
       {
           unsigned int val = ranges.ranges[range_idx];
           if (val < 20)

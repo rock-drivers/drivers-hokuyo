@@ -726,7 +726,6 @@ bool URG::readRanges(DFKI::LaserReadings& range, int timeout)
     }
     size_t const expected_count = (endStep - startStep + 1) / clusterCount;
     range.min   = startStep / clusterCount;
-    range.count = expected_count;
     range.resolution = m_info.resolution / clusterCount;
     range.speed = 60000000 / (m_info.motorSpeed * m_info.resolution);
 
@@ -734,6 +733,8 @@ bool URG::readRanges(DFKI::LaserReadings& range, int timeout)
     int device_timestamp = parseInt(4, timestamp);
     if (!timestamp)
         return error(BAD_REPLY);
+
+    range.ranges.resize(expected_count);
 
     char const* data = timestamp + 2;
     for (size_t i = 0; i < expected_count; ++i) {
@@ -817,14 +818,6 @@ bool URG::open(std::string const& filename){
     }
     if (! readInfo())
         return false;
-
-    // m_info.stepCount is not the same value ... I don't actually know what it is ...
-    size_t stepCount = m_info.stepMax - m_info.stepMin;
-    if (stepCount > DFKI_LASER_MAX_READINGS)
-    {
-        cerr << "device is capable of " << stepCount << " steps, but DFKI_LASER_MAX_READINGS == " << DFKI_LASER_MAX_READINGS << ". Update the code" << endl;
-        return error(INTERNAL_ERROR);
-    }
 
     return true;
 }

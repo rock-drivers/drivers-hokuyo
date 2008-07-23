@@ -6,6 +6,7 @@
 #include <iosfwd>
 #include <sys/types.h>
 #include <dfki/laser_readings.h>
+#include <iodrivers_base.hh>
 
 /** This class implements a driver for the Hokuyo laser range finders.
  *
@@ -15,13 +16,11 @@
  * error codes and URG::errorString(int) can return a string describing the
  * exact error.
  */
-class URG {
+class URG : public IODriver {
 public:
   struct StatusCode;
   struct SimpleCommand;
 
-  /** The maximum packet size. Internal use only */
-  static const int MAX_PACKET_SIZE       = 8192;
   /** For internal use */
   static const int MDMS_COMMAND_LENGTH   = 15;
   /** For internal use */
@@ -95,8 +94,8 @@ public:
   };
 
 private:
-  /** The file descriptor, or -1 if it is not initialized */
-  int         fd;
+  static const int MAX_PACKET_SIZE = 4096;
+
   /** The baudrate */
   int         baudrate;
   char        m_last_status[3];
@@ -104,11 +103,6 @@ private:
   ERROR_CODES m_error;
   /** The device info. This is read on initialization */
   DeviceInfo  m_info;
-
-  /** Internal buffer used for reading packets */
-  char internal_buffer[MAX_PACKET_SIZE];
-  /** The current count of bytes left in \c internal_buffer */
-  size_t internal_buffer_size;
 
   /** \overloaded */
   int readAnswer(char* buffer, size_t buffer_size, char const* expected_cmd, int timeout = 1000);
@@ -121,7 +115,6 @@ private:
 
   bool readInfo();
   bool simpleCommand(SimpleCommand const& cmd, int timeout = 1000);
-  int read(char* buffer, size_t buffer_size);
   /** Write the command defined in \c string. This command will be internally
    * enclosed in \n, so it does not need to be done already.
    *
@@ -133,6 +126,9 @@ private:
   bool error(ERROR_CODES code);
   bool parseErrorCode(char const* code, StatusCode const* specific_codes);
   bool infoCommand(std::map<std::string, std::string>& result, char const* cmd, bool scip1 = false);
+
+protected:
+  int extractPacket(uint8_t const* buffer, size_t buffer_size) const;
 
 public:
   URG();

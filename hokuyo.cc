@@ -155,17 +155,19 @@ char const* URG::errorString(int error_code)
 }
 
 URG::URG()
-    : m_error(OK)
-    , fd(-1)
+    : IODriver(MAX_PACKET_SIZE)
     , baudrate(19200)
-    , internal_buffer_size(0)
+    , m_error(OK)
 {
     m_last_status[0] = 
         m_last_status[1] = 
         m_last_status[2] = 0;
 }
-
-int URG::getFD() const { return fd; }
+URG::~URG()
+{
+    if (isValid())
+        close();
+}
 
 // Parses an int of x bytes in the hokyo format
 static unsigned int parseInt(int bytes, char const*& s){
@@ -195,29 +197,13 @@ bool URG::write(char const* string, int timeout)
     char buffer[MAX_PACKET_SIZE];
     snprintf(buffer, MAX_PACKET_SIZE, "\n%s\n", string);
     size_t cmd_size = strlen(buffer);
-
-    size_t written_size = 0;
-    while (written_size != cmd_size)
+    try
     {
-        fd_set set;
-        FD_ZERO(&set);
-        FD_SET(fd, &set);
-
-        timeval timeout_spec = { timeout / 1000, (timeout % 1000) * 1000 };
-        int ret = select(fd + 1, NULL, &set, NULL, &timeout_spec);
-        if (ret < 0)
-            return error(WRITE_FAILED);
-        else if (ret == 0)
-            return error(WRITE_TIMEOUT);
-
-        int single_write = ::write(fd, buffer + written_size, cmd_size - written_size);
-        if (single_write < 0)
-            return error(WRITE_FAILED);
-
-        written_size += single_write;
+        IODriver::writePacket(reinterpret_cast<uint8_t*>(buffer), cmd_size, timeout);
+        return true;
     }
-
-    return true;
+    catch(timeout_error)  { return error(WRITE_TIMEOUT); }
+    catch(...) { return error(WRITE_FAILED); }
 }
 
 bool URG::infoCommand(map<string, string>& result, char const* cmd, bool scip1)
@@ -319,140 +305,42 @@ int URG::readAnswer(char* buffer, size_t buffer_size, char const** expected_cmds
 {
     timeval start_time;
     gettimeofday(&start_time, 0);
-    while(true) {
-        timeval current_time;
-        gettimeofday(&current_time, 0);
-
-        int elapsed = 
-            (current_time.tv_sec - start_time.tv_sec) * 1000
-            + (static_cast<int>(current_time.tv_usec) -
-                    static_cast<int>(start_time.tv_usec)) / 1000;
-        if (elapsed > timeout)
+    try
+    {
+        while(true)
         {
-            error(READ_TIMEOUT);
-            return -1;
+            size_t packet_size = readPacket(reinterpret_cast<uint8_t*>(buffer), buffer_size, timeout);
+
+            for (char const** cmd = expected_cmds; *cmd; ++cmd)
+            {
+                if (packet_size > strlen(*cmd) && strncmp(buffer, *cmd, strlen(*cmd)) == 0)
+                    return packet_size;
+            }
+
+            if (packet_size)
+            {
+                string message;
+                if (packet_size > 50)
+                    message = string(buffer, 50) + "...";
+                else
+                    message = string(buffer, packet_size);
+
+                std::cerr << "ignored packet " << printable_com(message) << endl;
+                continue;
+            }
         }
-
-
-        int packet_size = read(buffer, buffer_size);
-        if (packet_size < 0)
-            return -1;
-        
-        for (char const** cmd = expected_cmds; *cmd; ++cmd)
-        {
-            if (packet_size > strlen(*cmd) && strncmp(buffer, *cmd, strlen(*cmd)) == 0)
-                return packet_size;
-        }
-
-        if (packet_size)
-        {
-            string message;
-            if (packet_size > 50)
-                message = string(buffer, 50) + "...";
-            else
-                message = string(buffer, packet_size);
-
-            std::cerr << "ignored packet " << printable_com(message) << endl;
-            continue;
-        }
-
-        fd_set set;
-        FD_ZERO(&set);
-        FD_SET(fd, &set);
-
-        timeval timeout_spec = { timeout / 1000, (timeout % 1000) * 1000 };
-        int ret = select(fd + 1, &set, NULL, NULL, &timeout_spec);
-        if (ret < 0)
-        {
-            error(READ_FAILED);
-            return -1;
-        }
-        else if (ret == 0)
-        {
-            error(READ_TIMEOUT);
-            return -1;
-        }
-
     }
+    catch(timeout_error) { error(READ_TIMEOUT); return -1; }
+    catch(...) { error(READ_FAILED); return -1; }
 }
 
-
-int URG::read(char* buffer, size_t buffer_size) {
-    m_error = OK;
-    if (buffer_size < MAX_PACKET_SIZE)
+int URG::extractPacket(uint8_t const* buffer, size_t buffer_size) const {
+    for (size_t i = 1; i < buffer_size; ++i)
     {
-        error(PROVIDED_BUFFER_TOO_SMALL);
-        return -1;
+        if (buffer[i - 1] == '\n' && buffer[i] == '\n')
+            return i + 1;
     }
-
-    // If there is none, go read some data ...
-    bool was_linefeed = false;
-
-    if (internal_buffer_size > 0)
-    {
-        //cerr << internal_buffer_size << " bytes remaining in internal buffer" << endl;
-
-        // Search for a double \n in the remains of the buffer
-        for (size_t i = 1; i < internal_buffer_size; ++i)
-        {
-            if (internal_buffer[i - 1] == '\n' && internal_buffer[i] == '\n')
-            {
-                memcpy(buffer, internal_buffer, i + 1);
-                internal_buffer_size -= i + 1;
-                memcpy(internal_buffer, internal_buffer + i + 1, internal_buffer_size);
-                //cerr << "packet: "    << printable_com(string(buffer, i + 1)) << endl;
-                //cerr << "remaining: " << printable_com(string(internal_buffer, internal_buffer_size)) << " (" << internal_buffer_size << ")" << endl;
-                return i + 1;
-            }
-        }
-
-        memcpy(buffer, internal_buffer, internal_buffer_size);
-        was_linefeed = (internal_buffer[internal_buffer_size - 1] == '\n');
-    }
-
-    char* b = buffer + internal_buffer_size;
-    internal_buffer_size = 0;
-    while (true) {
-        int c = ::read(fd, b, MAX_PACKET_SIZE - (b - buffer));
-        if (c > 0) {
-            //cerr << "received: " << printable_com(string(b, c)) << " (" << c << ")" << endl;
-            //cerr << "buffer:   "  << printable_com(string(buffer, b + c)) << " (" << b + c - buffer << ")" << endl;
-            for (size_t i = 0; i < c; i++) {
-                if (was_linefeed && b[i] == '\n') {
-                    ++i;
-                    memcpy(internal_buffer, b + i, c - i);
-                    internal_buffer_size = c - i;
-                    //cerr << "packet:    " << printable_com(string(buffer, b + i)) << endl;
-                    //cerr << "remaining: " << printable_com(string(internal_buffer, internal_buffer_size)) << " (" << internal_buffer_size << ")" << endl;
-                    return b + i - buffer;
-                }
-                was_linefeed = (b[i] == '\n');
-            }
-            b += c;
-        }
-        else if (c < 0)
-        {
-            if (errno == EAGAIN)
-            {
-                internal_buffer_size = b - buffer;
-                memcpy(internal_buffer, buffer, internal_buffer_size);
-                return 0;
-            }
-
-            error(READ_FAILED);
-            return -1;
-        }
-
-        if (b == buffer + MAX_PACKET_SIZE)
-        {
-            // something wrong on the line ...
-            fprintf(stderr, "current packet too large (%i > %i)\n", b - buffer, MAX_PACKET_SIZE);
-            error(READ_FAILED);
-            return -1;
-        }
-    }
-
-    // Never reached
+    return 0;
 }
 
 bool URG::parseErrorCode(char const* code, StatusCode const* specific_codes)
@@ -498,38 +386,14 @@ bool URG::simpleCommand(SimpleCommand const& cmd, int timeout) {
     return parseErrorCode(buf + cmd_size + 1, cmd.specific_codes);
 }
 
-static bool set_host_baudrate(int fd, int brate) {
-    struct termios termios_p;
-    if(tcgetattr(fd, &termios_p)){
-        perror("Failed to get terminal info \n");    
-        return false;
-    }
-
-    if(cfsetispeed(&termios_p, brate)){
-        perror("Failed to set terminal input speed \n");    
-        return false;
-    }
-
-    if(cfsetospeed(&termios_p, brate)){
-        perror("Failed to set terminal output speed \n");    
-        return false;
-    }
-
-    if(tcsetattr(fd, TCSANOW, &termios_p)) {
-        perror("Failed to set speed \n");    
-        return false;
-    }
-    return true;
-}
-
 bool URG::fullReset() {
     cerr << "Resetting scanner..." << flush;
-    speed_t baudrates[]={B19200, B57600, B115200};
+    size_t baudrates[]={19200, 57600, 115200};
     const int baudrates_count = 3;
 
     int i;
     for (i=0; i < baudrates_count; i++){
-        if (!set_host_baudrate(fd, baudrates[i]))
+        if (!setSerialBaudrate(baudrates[i]))
             return error(URG::BAD_HOST_RATE);;
 
         m_error = OK;
@@ -552,7 +416,7 @@ bool URG::fullReset() {
     if (i == baudrates_count)
         return false;
 
-    if (!set_host_baudrate(fd, B19200))
+    if (!setSerialBaudrate(19200))
         return error(URG::BAD_HOST_RATE);;
 
     // Set baud rate to default
@@ -566,33 +430,10 @@ bool URG::fullReset() {
     return true;
 }
 
-static int tc_baudrateSetting(int brate)
-{
-    switch(brate) {
-        case(19200):
-            return B19200;
-        case(57600):
-            return B57600;
-        case(115200):
-            return B115200;
-        default:
-            printf("Invalid Baudrate specified \n");
-            return 0;
-    }
-}
-
 bool URG::setBaudrate(int brate){
     char cmd[MAX_PACKET_SIZE];
-    //char answer[bufsize];
-    int i;
-    int status;
-    int sucess = -1;
 
-    speed_t newbrate = tc_baudrateSetting(brate);
-    if (!newbrate)
-        return error(BAD_RATE);
-
-    if (fd == -1)
+    if (!isValid())
     {
         this->baudrate = brate;
         return true;
@@ -600,14 +441,14 @@ bool URG::setBaudrate(int brate){
 
 
     //switch to current baudrate
-    if(! set_host_baudrate(fd, tc_baudrateSetting(baudrate)))
+    if(! setSerialBaudrate(baudrate))
         return error(URG::BAD_HOST_RATE);;
 
     sprintf(cmd, "SS%06d", brate);
     SimpleCommand cmd_obj = { cmd, URG_SS_STATUS_CODES };
     if (URG::simpleCommand(cmd_obj))
     {
-        if (!set_host_baudrate(fd, newbrate))
+        if (!setSerialBaudrate(brate))
             return error(URG::BAD_HOST_RATE);;
 
         baudrate = brate;
@@ -621,24 +462,6 @@ bool URG::setBaudrate(int brate){
     if (!URG::readInfo())
         return error(BAD_STATE);
     return baudrate == brate;
-}
-
-static bool setNonBlocking(int fd) {
-    //switch back to nonblocking
-    if(fcntl(fd, F_SETFL, O_RDWR | O_NONBLOCK | O_NOCTTY | O_SYNC) < 0) {
-        perror("Failed to set fd to O_RDWR|O_NONBLOCK|O_NOCTTY | O_SYNC");
-        return false;
-    }
-    return true;
-}
-
-static bool setBlocking(int fd) {
-    //switch back to nonblocking
-    if(fcntl(fd, F_SETFL, O_RDWR| O_NOCTTY | O_SYNC) < 0) {
-        perror("Failed to set fd to O_RDWR| O_NOCTTY | O_SYNC");
-        return false;
-    }
-    return true;
 }
 
 bool URG::startAcquisition(int nScans, int startStep, int endStep, int scanInterval, int clusterCount){
@@ -655,7 +478,7 @@ bool URG::startAcquisition(int nScans, int startStep, int endStep, int scanInter
 
     char command[1024];
     sprintf (command, "MD%04d%04d%02d%1d%02d", startStep, endStep, clusterCount, scanInterval, nScans);
-    if (strlen(command) != MDMS_COMMAND_LENGTH)
+    if ((int)strlen(command) != MDMS_COMMAND_LENGTH)
     {
         cerr << "MDMS_COMMAND_LENGTH does not match the size of the command we are sending. Fix the code." << endl;
         return error(INTERNAL_ERROR);
@@ -749,7 +572,7 @@ bool URG::readRanges(DFKI::LaserReadings& range, int timeout)
     if (data && data[1] != '\n')
     {
         cerr << "expected " << expected_count << " ranges, but got more" << endl;
-        cerr << printable_com(data) << endl;
+        cerr << "remaining bytes in buffer: " << printable_com(data) << endl;
         return error(BAD_REPLY);
     }
 
@@ -760,53 +583,19 @@ bool URG::stopAcquisition() {
     return URG::simpleCommand(URG_QUIT);
 }
 
-URG::~URG() {
-    if (fd != -1)
-	close();
-}
 bool URG::close() {
     stopAcquisition();
     setBaudrate(19200);
-    ::close(fd);
-    fd = -1;
+    IODriver::close();
     return true;
 }
 
 bool URG::open(std::string const& filename){
-    struct termios tio;
-
-    fd = ::open(filename.c_str(), O_RDWR | O_NOCTTY | O_SYNC | O_NONBLOCK );
-    if (fd < 0){
-        printf("Failed to open %s: ", filename.c_str());
-        perror("");
-        return false;
-    }
-
-    tcgetattr(fd,&tio);
-
-    tio.c_cflag=(tio.c_cflag & ~CSIZE) | CS8; // data bits = 8bit
-
-    tio.c_iflag&= ~( BRKINT | ICRNL | ISTRIP );
-    tio.c_iflag&= ~ IXON;    // no XON/XOFF
-    tio.c_cflag&= ~PARENB;   // no parity
-#ifndef LINUX
-    tio.c_cflag&= ~CRTSCTS;  // no CTS/RTS
-    tio.c_cflag&= ~CSTOPB;   // stop bit = 1bit
-#endif
-
-#ifdef CYGWIN
-    tio.c_cc[VMIN] = 1;
-    tio.c_cc[VTIME] = 1;
-#endif
-
-    // Other
-    tio.c_lflag &= ~( ISIG | ICANON | ECHO );
-
-    // Commit
-    if(tcsetattr(fd,TCSADRAIN,&tio)!=0)
+    if (! IODriver::openSerial(filename, 19200))
         return false;
 
     int desired_baudrate = baudrate;
+
     // Reset the scanner
     if (! fullReset())
         return false;

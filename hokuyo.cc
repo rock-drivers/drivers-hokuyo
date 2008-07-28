@@ -98,21 +98,6 @@ static URG::StatusCode URG_COMMON_STATUS_CODES[] = {
     { 0, URG::END }
 };
 
-/* WARNING: the following error codes are one-byte status -- even though SLIP
- * specification tells all codes are two-bytes */
-static URG::StatusCode URG_STATUS_CODES_SCIP1[] = {
-    { "0", URG::OK },
-    { "A", URG::INTERNAL_COM_FAILED },
-    { "B", URG::DRIVER_BUFFER_OVERFLOW },
-    { "C", URG::BAD_COMMAND },
-    { "D", URG::BAD_COMMAND },
-    { "E", URG::BAD_COMMAND },
-    { "F", URG::BAD_COMMAND },
-    { "G", URG::STRING_TOO_LONG },
-    { "H", URG::BAD_STRING },
-    { 0, URG::END }
-};
-
 static URG::StatusCode URG_SCIP2_STATUS_CODES[] = {
     { "0E", URG::OK }, // 0E means "already in SCIP2"
     { 0, URG::END }

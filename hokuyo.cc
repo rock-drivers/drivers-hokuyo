@@ -72,6 +72,7 @@ static ReturnValueDescription URG_RETURN_DESCRIPTION[] = {
     { URG::NOT_SCIP2_CAPABLE,          "this device is not SCIP2. Upgrade firmware" },
     { URG::INCONSISTEN_RANGE_COUNT,    "did not get the expected count of ranges" },
 
+    { URG::UNKNOWN_DEVICE_VERSION,     "the returned device version is not known to the driver" },
     { URG::UNKNOWN,                    "UNKNOWN" },
 
     { URG::END, 0 }
@@ -111,7 +112,8 @@ static URG::StatusCode URG_BM_STATUS_CODES[] = {
 static URG::StatusCode URG_SS_STATUS_CODES[] = {
     { "01", URG::BAD_RATE },
     { "02", URG::BAD_RATE },
-    { "03", URG::OK },
+    { "03", URG::OK }, // already at the given bit rate
+    { "04", URG::NON_APPLICABLE }, // no bit rate setting (i.e. non-serial interface)
     { 0, URG::END }
 };
 
@@ -267,7 +269,22 @@ bool URG::readInfo()
         return false;
 
     if (fields["STAT"] != "Sensor works well.")
+    {
+        std::cerr << fields["STAT"] << std::endl;
         return error(BAD_STATE);
+    }
+
+    string version = string(fields["MODL"], 0, 8);
+    if (version == "UTM-30LX")
+        m_info.version = DeviceInfo::UTM30LX;
+    else if (version == "URG-04LX")
+        m_info.version = DeviceInfo::URG04LX;
+    else
+    {
+        m_info.version = DeviceInfo::UNKNOWN;
+        std::cerr << "driver returned version '" << version << "', which is not known to the driver" << std::endl;
+        return error(UNKNOWN_DEVICE_VERSION);
+    }
 
     m_info.values     = fields;
     m_info.dMin       = atoi(fields["DMIN"].c_str());
@@ -323,7 +340,10 @@ int URG::extractPacket(uint8_t const* buffer, size_t buffer_size) const {
     for (size_t i = 1; i < buffer_size; ++i)
     {
         if (buffer[i - 1] == '\n' && buffer[i] == '\n')
+        {
+            //std::cerr << "R " << string(buffer, buffer + i);
             return i + 1;
+        }
     }
     return 0;
 }
@@ -424,8 +444,7 @@ bool URG::setBaudrate(int brate){
         return true;
     }
 
-
-    //switch to current baudrate
+    // switch to current baudrate
     if(! setSerialBaudrate(baudrate))
         return error(URG::BAD_HOST_RATE);;
 
@@ -443,9 +462,11 @@ bool URG::setBaudrate(int brate){
         nanosleep(&tv, &tv);
         return true;
     }
+    else if (error() == URG::NON_APPLICABLE)
+        this->baudrate = brate;
 
     if (!URG::readInfo())
-        return error(BAD_STATE);
+        return false;
     return baudrate == brate;
 }
 
@@ -532,8 +553,10 @@ bool URG::readRanges(DFKI::LaserReadings& range, int timeout)
         v[2]=0;
         strncpy(v,buffer + 10,2); clusterCount = atoi(v);
     }
-    size_t const expected_count = (endStep - startStep + 1) / clusterCount;
-    range.min   = startStep / clusterCount;
+    size_t const expected_count = (endStep - startStep + 1 + 1) / clusterCount;
+
+    int back_step = m_info.stepFront - m_info.resolution / 2;
+    range.min     = (startStep - back_step) / clusterCount;
     range.resolution = m_info.resolution / clusterCount;
     range.speed = 60000000 / (m_info.motorSpeed * m_info.resolution);
 
@@ -553,6 +576,24 @@ bool URG::readRanges(DFKI::LaserReadings& range, int timeout)
         }
 
         range.ranges[i] = parseInt(3, data);
+        if (range.ranges[i] < (size_t)m_info.dMin)
+        {
+            // an error has occured. In the case of the URG-04, classify them
+            if (m_info.version == DeviceInfo::URG04LX)
+            {
+                if (range.ranges[i] == 0)
+                    range.ranges[i] = TOO_FAR;
+                else
+                    range.ranges[i] = MEASUREMENT_ERROR;
+            }
+            else if (m_info.version == DeviceInfo::UTM30LX)
+            {
+                if (range.ranges[i] == 4)
+                    range.ranges[i] = TOO_FAR;
+                else if (range.ranges[i] > 4)
+                    range.ranges[i] = OTHER_RANGE_ERRORS;
+            }
+        }
     }
     if (data && data[1] != '\n')
     {
@@ -600,11 +641,12 @@ std::ostream& operator << (ostream& io, URG::DeviceInfo info)
 {
 
     float deg_per_step = 360.0 / info.resolution;
+
     io << "Device: " << info.values["MODL"] << " (S/N " << info.values["SERI"] << ")\n"
         << "  firmware:    " << info.values["FIRM"] << "\n"
         << "  scan range:  [" << info.dMin << ", " << info.dMax << "]" << "\n"
         << "  resolution:  :" << info.resolution << " steps, " << deg_per_step << " degree per step\n"
-        << "  scan region: [" << info.stepMin << ", " << info.stepMax << "]" << " steps, [" << info.stepMin * deg_per_step << ", " << info.stepMax * deg_per_step << "] deg\n"
+        << "  scan region: " << info.stepMax - info.stepMin + 1 << " steps, " << (info.stepMax - info.stepMin + 1) * deg_per_step << " deg\n"
         << "  scan period: " << 60000 / info.motorSpeed << "ms" << endl;
 
     return io;

@@ -31,17 +31,11 @@ public:
   /** Special values for the ranges. If a range has one of these values, then
    * it is not valid and the value declares what is going on */
   enum RANGE_ERRORS {
-      TOO_FAR = 0,
-      LOW_INTENSITY0 = 1,
-      LOW_INTENSITY1 = 2,
-      LOW_INTENSITY2 = 3,
-      LOW_INTENSITY3 = 4,
-      LOW_INTENSITY4 = 5,
-      NEXT_PREVIOUS_ERROR = 7,
-      INTENSITY_DIFFERENCE = 8,
-      TWO_PREVIOUS_ERROR = 9,
-      STRONG_REFLECTIVE_OBJECT = 18,
-      NON_MEASURABLE_STEP = 19
+      TOO_FAR            = 1, // too far
+      TOO_NEAR           = 2,
+      MEASUREMENT_ERROR  = 3,
+      OTHER_RANGE_ERRORS = 4,
+      MAX_RANGE_ERROR    = 4
   };
 
   /** This structure is returned by getInfo() to represent various informations
@@ -49,13 +43,19 @@ public:
    */
   struct DeviceInfo {
       DeviceInfo()
-          : dMin(0), dMax(0), resolution(0), stepMin(0), stepMax(0), stepFront(0), motorSpeed(0) { }
+          : version(UNKNOWN), dMin(0), dMax(0), resolution(0), stepMin(0), stepMax(0), stepFront(0), motorSpeed(0) { }
 
+      enum VERSIONS {
+          URG04LX,
+          UTM30LX,
+          UNKNOWN
+      };
       std::map<std::string, std::string> values;
+      VERSIONS version;
       int dMin;       /// the minimal measurable distance
       int dMax;       /// the biggest measurable distance
       int resolution; /// how much steps in one full turn
-      int stepMin;    /// the first measurable step
+      int stepMin;    /// the first measurable range
       int stepMax;    /// the last measurable step
       int stepFront;  /// the step number in front of the device
       int motorSpeed; /// Motor speed in turn per minute
@@ -73,6 +73,7 @@ public:
     FIRMWARE_UPDATE     = 7,
     LASER_MALFUNCTION   = 8,
     HARDWARE_FAILURE    = 9,
+    NON_APPLICABLE      = 10,
     
     BAD_REPLY                   = 100,
     DRIVER_BUFFER_OVERFLOW      = 121,
@@ -89,6 +90,7 @@ public:
 
     UNKNOWN                     = 200,
     INTERNAL_ERROR              = 201,
+    UNKNOWN_DEVICE_VERSION      = 202,
 
     END				= 500
   };

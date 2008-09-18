@@ -47,11 +47,11 @@ int main (int argc, const char** argv){
       }
 
       int too_far = 0;
-      int bad_ranges = 0;
+      int bad_ranges;
       for (int range_idx = 0; range_idx < ranges.ranges.size(); ++range_idx)
       {
           unsigned int val = ranges.ranges[range_idx];
-          if (val < 20)
+          if (val <= URG::MAX_RANGE_ERROR)
           {
               if (val == URG::TOO_FAR)
                   too_far++;
@@ -63,7 +63,7 @@ int main (int argc, const char** argv){
       int dt = (ranges.stamp.seconds - reftime.tv_sec) * 1000 + ranges.stamp.microseconds / 1000;
       cerr << i << " " << dt << "\n"
           << "  too far: " << too_far << "\n"
-          << "  invalid: " << bad_ranges << endl;
+          << "  bad: " << bad_ranges << std::endl;
 
   }
 

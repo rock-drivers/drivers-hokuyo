@@ -23,6 +23,8 @@ INSTALL(TARGETS hokuyo  LIBRARY DESTINATION lib)
 INSTALL(FILES hokuyo.hh DESTINATION include)
 
 CONFIGURE_FILE(Doxyfile.in Doxyfile @ONLY)
+ADD_CUSTOM_TARGET(doc doxygen Doxyfile)
+
 CONFIGURE_FILE(hokuyo.pc.in hokuyo.pc @ONLY)
 INSTALL(FILES ${CMAKE_BINARY_DIR}/hokuyo.pc DESTINATION lib/pkgconfig)
 

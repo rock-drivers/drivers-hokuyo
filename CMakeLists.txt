@@ -19,7 +19,13 @@ TARGET_LINK_LIBRARIES(hokuyo ${DFKI_TYPES_LIBRARIES} ${IO_LIBRARIES})
 
 ADD_EXECUTABLE(hokuyo_test hokuyo_test.cc)
 TARGET_LINK_LIBRARIES(hokuyo_test hokuyo)
-INSTALL(TARGETS hokuyo  LIBRARY DESTINATION lib)
+
+ADD_EXECUTABLE(hokuyo_acq hokuyo_acq.cc)
+TARGET_LINK_LIBRARIES(hokuyo_acq hokuyo)
+
+INSTALL(TARGETS hokuyo hokuyo_acq
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib)
 INSTALL(FILES hokuyo.hh DESTINATION include)
 
 CONFIGURE_FILE(Doxyfile.in Doxyfile @ONLY)

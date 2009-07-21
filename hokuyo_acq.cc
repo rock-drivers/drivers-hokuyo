@@ -63,7 +63,7 @@ int main (int argc, const char** argv){
       float res   = 2 * M_PI / scan.resolution;
       float min   = res * scan.min;
 
-      cout << scan.stamp.toMilliseconds() << " " << min << " " << res << " " << scan.ranges.size();
+      cout << DFKI::Time::now().toMilliseconds() << " " << scan.stamp.toMilliseconds() << " " << min << " " << res << " " << scan.ranges.size();
       for (size_t i = 0; i < scan.ranges.size(); ++i)
           cout << " " << scan.ranges[i];
       cout << endl;

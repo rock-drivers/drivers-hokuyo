@@ -7,7 +7,9 @@
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 
+#include <math.h>
 #include <termio.h>
 #include <sys/types.h>
 #include <sys/time.h>
@@ -17,23 +19,6 @@
 #include <errno.h>
 
 using namespace std;
-
-static string printable_com(string const& buffer)
-{
-    char const* str = buffer.c_str();
-    size_t str_size = buffer.size();
-    ostringstream result;
-    for (size_t i = 0; i < str_size; ++i)
-    {
-        if (str[i] == '\n')
-            result << "\\n";
-        else if (str[i] == '\r')
-            result << "\\r";
-        else
-            result << str[i];
-    }
-    return result.str();
-}
 
 struct URG::StatusCode
 {

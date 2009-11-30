@@ -507,7 +507,7 @@ bool URG::startAcquisition(int nScans, int startStep, int endStep, int scanInter
     return true;
 }
 
-bool URG::readRanges(DFKI::LaserReadings& range, int timeout)
+bool URG::readRanges(base::LaserReadings& range, int timeout)
 {
     if (timeout == -1)
         timeout = 2 * 60000 / m_info.motorSpeed;

@@ -1,4 +1,4 @@
 <package>
-    <depend package="modules/dfki_toolkit" />
+    <depend package="base" />
     <depend package="drivers/iodrivers_base" />
 </package>

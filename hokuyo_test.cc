@@ -39,8 +39,8 @@ int main (int argc, const char** argv){
       return 1;
   }
 
-  DFKI::LaserReadings ranges;
-  DFKI::Time reftime = DFKI::Time::now();
+  base::LaserReadings ranges;
+  base::Time reftime = base::Time::now();
   for (int i = 0; i < count; ++i)
   {
       if (!urg.readRanges(ranges))

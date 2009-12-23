@@ -96,7 +96,7 @@ public:
   };
 
 private:
-  static const int MAX_PACKET_SIZE = 4096;
+  static const unsigned int MAX_PACKET_SIZE = 8192;
 
   /** The baudrate */
   int         baudrate;
@@ -105,6 +105,12 @@ private:
   ERROR_CODES m_error;
   /** The device info. This is read on initialization */
   DeviceInfo  m_info;
+
+  /** lookup table for remission values */
+  static const int MAX_RANGE_READING = 60000;
+  std::vector<float> remission_lookup;
+  float normaliseRemission( int raw, int range );
+  void initRemissionLookup();
 
   /** \overloaded */
   int readAnswer(char* buffer, size_t buffer_size, char const* expected_cmd, int timeout = 1000);
@@ -159,8 +165,9 @@ public:
    *      the first readable step defined for the device.
    * @arg scanInterval the count of scans to ignore between two reported scans.
    * @arg clusterCount how many ranges the device should merge into one reported range
+   * @arg includeRemission ask the device to also include remission values 
    */
-  bool startAcquisition(int nScans, int startStep = -1, int endStep = -1, int scanInterval = 0, int clusterCount = 1);
+  bool startAcquisition(int nScans, int startStep = -1, int endStep = -1, int scanInterval = 0, int clusterCount = 1, bool includeRemission = false );
   /** Stop continuous acquisition */
   bool stopAcquisition();
   /** Gets a range reading and decodes it into \c range. If timeout is

@@ -7,7 +7,9 @@
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 
+#include <math.h>
 #include <termio.h>
 #include <sys/types.h>
 #include <sys/time.h>
@@ -17,23 +19,6 @@
 #include <errno.h>
 
 using namespace std;
-
-static string printable_com(string const& buffer)
-{
-    char const* str = buffer.c_str();
-    size_t str_size = buffer.size();
-    ostringstream result;
-    for (size_t i = 0; i < str_size; ++i)
-    {
-        if (str[i] == '\n')
-            result << "\\n";
-        else if (str[i] == '\r')
-            result << "\\r";
-        else
-            result << str[i];
-    }
-    return result.str();
-}
 
 struct URG::StatusCode
 {
@@ -333,7 +318,7 @@ int URG::readAnswer(char* buffer, size_t buffer_size, char const** expected_cmds
         }
     }
     catch(timeout_error) { error(READ_TIMEOUT); return -1; }
-    catch(...) { error(READ_FAILED); return -1; }
+    catch(std::exception &e) { cerr << e.what() << endl; error(READ_FAILED); return -1; }
 }
 
 int URG::extractPacket(uint8_t const* buffer, size_t buffer_size) const {
@@ -345,6 +330,10 @@ int URG::extractPacket(uint8_t const* buffer, size_t buffer_size) const {
             return i + 1;
         }
     }
+
+    if( buffer_size >= MAX_PACKET_SIZE )
+	return -buffer_size;
+
     return 0;
 }
 
@@ -400,6 +389,12 @@ bool URG::fullReset() {
     for (i=0; i < baudrates_count; i++){
         if (!setSerialBaudrate(baudrates[i]))
             return error(URG::BAD_HOST_RATE);;
+
+	// before doing anything send a quit command, since
+	// the scanner could still be in continous mode.
+	// If this is the case, we will also not get a response here,
+	// so don't wait for it.
+	simpleCommand(URG_QUIT, 0);
 
         m_error = OK;
         if (simpleCommand(URG_SCIP2, 10000))
@@ -470,7 +465,7 @@ bool URG::setBaudrate(int brate){
     return baudrate == brate;
 }
 
-bool URG::startAcquisition(int nScans, int startStep, int endStep, int scanInterval, int clusterCount){
+bool URG::startAcquisition(int nScans, int startStep, int endStep, int scanInterval, int clusterCount, bool includeRemission ){
     // switch on the laser
     if (!URG::simpleCommand(URG_BM))
         return false;
@@ -484,6 +479,11 @@ bool URG::startAcquisition(int nScans, int startStep, int endStep, int scanInter
 
     char command[1024];
     sprintf (command, "MD%04d%04d%02d%1d%02d", startStep, endStep, clusterCount, scanInterval, nScans);
+    // set command to ME to also obtain remission values
+    // everything else stays the same
+    if( includeRemission )
+	command[1] = 'E';
+
     if ((int)strlen(command) != MDMS_COMMAND_LENGTH)
     {
         cerr << "MDMS_COMMAND_LENGTH does not match the size of the command we are sending. Fix the code." << endl;
@@ -504,15 +504,24 @@ bool URG::startAcquisition(int nScans, int startStep, int endStep, int scanInter
         return false;
     }
 
+    // setup the lookup table for normalising the remission values
+    if( includeRemission )
+	initRemissionLookup();
+
     return true;
 }
 
 bool URG::readRanges(base::LaserReadings& range, int timeout)
 {
+    // calculate the timeout to be three cycles
+    // one measurement should usually appear after one cycle,
+    // however, for extended measurements with remission, 
+    // two cycles are needed for transmission. 
+    // a timeout of 5 cycles should be safe for all cases
     if (timeout == -1)
-        timeout = 2 * 60000 / m_info.motorSpeed;
+        timeout = 5 * 60000 / m_info.motorSpeed;
 
-    char const* expected_cmds[] = { "MD", "MS", 0 };
+    char const* expected_cmds[] = { "MD", "ME", "MS", 0 };
 
     char buffer[MAX_PACKET_SIZE];
     int packet_size = readAnswer(buffer, MAX_PACKET_SIZE, expected_cmds, timeout);
@@ -544,6 +553,11 @@ bool URG::readRanges(base::LaserReadings& range, int timeout)
         return false;
     }
 
+    // Check command echo for ME command
+    bool includeRemission = false;
+    if( *(buffer + 1) == 'E' )
+	includeRemission = true;
+
     // Read step setup from the command echo
     int startStep, endStep, clusterCount;
     { char v[5];
@@ -553,29 +567,47 @@ bool URG::readRanges(base::LaserReadings& range, int timeout)
         v[2]=0;
         strncpy(v,buffer + 10,2); clusterCount = atoi(v);
     }
-    size_t const expected_count = (endStep - startStep + 1 + 1) / clusterCount;
+    size_t const expected_count = (endStep - startStep + 1) / clusterCount;
 
     int back_step = m_info.stepFront - m_info.resolution / 2;
     range.min     = (startStep - back_step) / clusterCount;
     range.resolution = m_info.resolution / clusterCount;
     range.speed = 60000000 / (m_info.motorSpeed * m_info.resolution);
 
+    // read timestamp (currently not used)
     char const* timestamp = buffer + MDMS_COMMAND_LENGTH + 5;
     int device_timestamp = parseInt(4, timestamp);
     if (!timestamp)
         return error(BAD_REPLY);
 
+    {
+	// check that the buffer has the right size for the expected readings
+	int data_size = packet_size - MDMS_COMMAND_LENGTH - 11 - 3;
+	int expected_size = (expected_count * 3 * (includeRemission+1));
+	expected_size = expected_size + (expected_size/64)*2;
+
+	if( data_size != expected_size )
+	{
+	    cerr << "inconsisted buffer size, expected " << expected_size << " got " << data_size << endl;
+	    if( expected_size < data_size )
+		cerr << "remaining bytes in buffer: " << printable_com(buffer+MDMS_COMMAND_LENGTH+11+3+expected_size) << endl;
+	    return error(INCONSISTEN_RANGE_COUNT);
+	}
+    }
+
     range.ranges.resize(expected_count);
+    if( includeRemission )
+	range.remission.resize(expected_count);
 
-    char const* data = timestamp + 2;
-    for (size_t i = 0; i < expected_count; ++i) {
-        if (data == 0)
-        {
-            cerr << "read " << i << " ranges, expected " << expected_count << endl;
-            return error(INCONSISTEN_RANGE_COUNT);
-        }
+    char const* data = buffer + MDMS_COMMAND_LENGTH + 11;
 
-        range.ranges[i] = parseInt(3, data);
+    for (size_t i = 0; i < expected_count; ++i) 
+    {
+	int range_value = parseInt(3, data);
+        range.ranges[i] = range_value;
+	if( includeRemission )
+	    range.remission[i] = normaliseRemission( parseInt(3, data), range_value );
+
         if (range.ranges[i] < (size_t)m_info.dMin)
         {
             // an error has occured. In the case of the URG-04, classify them
@@ -636,6 +668,41 @@ bool URG::open(std::string const& filename){
 
     return true;
 }
+
+void URG::initRemissionLookup() 
+{
+    // we assume the underlying model to be
+    // remission_value = a * b^range, where 
+    // a is the factor that we are interested in
+    // since 1/b^range is quite expensive to do
+    // for each point, we do it in a lookup table
+
+    // const values where evaluated from data give
+    // by hokuyo in document "SCIP2.0 SPECIAL COMMANDS"
+    //
+    // TODO: This model is crap!!! But it seems that the data
+    // cannot be normalised by the distance alone.
+    // leave this till later, and return unnormalised remission 
+    // values for now.
+/*
+    const float b = 0.99989985;
+
+    remission_lookup.clear();
+    remission_lookup.resize( MAX_RANGE_READING );
+    for(int i=0;i<MAX_RANGE_READING;i++) 
+    {
+	remission_lookup[i] = 1.0/pow(b, i);
+    }
+*/
+}
+
+float URG::normaliseRemission( int raw, int range )
+{
+    return raw;
+//    range = std::min<int>( MAX_RANGE_READING-1, range );
+//    return remission_lookup[range] * raw;
+}
+
 
 std::ostream& operator << (ostream& io, URG::DeviceInfo info)
 {

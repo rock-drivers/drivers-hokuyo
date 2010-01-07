@@ -5,7 +5,7 @@
 #include <string>
 #include <iosfwd>
 #include <sys/types.h>
-#include <base/laser_readings.h>
+#include <base/samples/laser_scan.h>
 #include <iodrivers_base.hh>
 
 /** This class implements a driver for the Hokuyo laser range finders.
@@ -173,7 +173,7 @@ public:
   /** Gets a range reading and decodes it into \c range. If timeout is
    * positive, it is how much time, in milliseconds, we should wait for an
    * answer. If it is -1, it is set to twice the scan duration */
-  bool readRanges(base::LaserReadings& range, int timeout = -1);
+  bool readRanges(base::samples::LaserScan& range, int timeout = -1);
   /** Sets the device baudrate (only possible for serial devices). +brate+ is
    * the baud rate in bps, can be one of 19200, 57600 and 115200
    *

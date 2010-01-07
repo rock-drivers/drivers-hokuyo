@@ -511,7 +511,7 @@ bool URG::startAcquisition(int nScans, int startStep, int endStep, int scanInter
     return true;
 }
 
-bool URG::readRanges(base::LaserReadings& range, int timeout)
+bool URG::readRanges(base::samples::LaserScan& range, int timeout)
 {
     // calculate the timeout to be three cycles
     // one measurement should usually appear after one cycle,
@@ -528,11 +528,7 @@ bool URG::readRanges(base::LaserReadings& range, int timeout)
     if (packet_size < 0)
         return false;
 
-    timeval tv;
-    gettimeofday(&tv, 0);
-    range.stamp.seconds = tv.tv_sec;
-    range.stamp.microseconds = tv.tv_usec;
-
+    range.time = base::Time::now();
     buffer[packet_size] = 0;
 
     // Check status. Use parseErrorCode for standard error codes, and then do

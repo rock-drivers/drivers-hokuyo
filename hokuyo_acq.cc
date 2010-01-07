@@ -48,7 +48,7 @@ int main (int argc, const char** argv){
       return 1;
   }
 
-  base::LaserReadings scan;
+  base::samples::LaserScan scan;
   cout << "# timestamp is in milliseconds, angles are in radians and ranges in millimeters." << endl;
   cout << "# timestamp angle_min angle_resolution range_count range0 range1 ..." << endl;
   while(!keypressed())
@@ -63,7 +63,7 @@ int main (int argc, const char** argv){
       float res   = 2 * M_PI / scan.resolution;
       float min   = res * scan.min;
 
-      cout << base::Time::now().toMilliseconds() << " " << scan.stamp.toMilliseconds() << " " << min << " " << res << " " << scan.ranges.size();
+      cout << base::Time::now().toMilliseconds() << " " << scan.time.toMilliseconds() << " " << min << " " << res << " " << scan.ranges.size();
       for (size_t i = 0; i < scan.ranges.size(); ++i)
           cout << " " << scan.ranges[i];
       cout << endl;

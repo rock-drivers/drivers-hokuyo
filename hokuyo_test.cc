@@ -29,7 +29,7 @@ int main (int argc, const char** argv){
   URG::DeviceInfo device = urg.getInfo();
   cout << urg.getInfo() << endl;
 
-  base::LaserReadings ranges;
+  base::samples::LaserScan ranges;
 
   int test = 1;
   size_t count = 20;
@@ -69,7 +69,7 @@ int main (int argc, const char** argv){
       }
 
       base::Time reftime = base::Time::now();
-      for (int i = 0; i < count; ++i)
+      for (unsigned int i = 0; i < count; ++i)
       {
 	  if (!urg.readRanges(ranges))
 	  {
@@ -100,11 +100,11 @@ int main (int argc, const char** argv){
 		  good_ranges++;
 	  }
 
-	  int dt = (ranges.stamp - reftime).toMilliseconds();
+	  int dt = (ranges.time - reftime).toMilliseconds();
 	  if (i != 0 && dt > 30*(test+1))
 	      cerr << "!!!! LATENCY PROBLEM: " << dt << endl;
 	  cout << i << " " << dt << " good=" << good_ranges << " too_far=" << too_far << " bad=" << bad_ranges << "\n";
-	  reftime = ranges.stamp;
+	  reftime = ranges.time;
       }
 
       urg.stopAcquisition();

@@ -60,8 +60,8 @@ int main (int argc, const char** argv){
       }
 
 
-      float res   = 2 * M_PI / scan.resolution;
-      float min   = res * scan.min;
+      float res   = scan.angular_resolution;
+      float min   = scan.start_angle;
 
       cout << base::Time::now().toMilliseconds() << " " << scan.time.toMilliseconds() << " " << min << " " << res << " " << scan.ranges.size();
       for (size_t i = 0; i < scan.ranges.size(); ++i)

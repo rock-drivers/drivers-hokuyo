@@ -565,12 +565,14 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
     }
     size_t const expected_count = (endStep - startStep + 1) / clusterCount;
 
-    range.start_angle     = startStep * 2.0 * M_PI / m_info.resolution;
+    range.start_angle = (startStep - m_info.stepFront) * 2.0 * M_PI / m_info.resolution;
     range.angular_resolution = 2.0 * M_PI / m_info.resolution * clusterCount;
     range.speed = m_info.motorSpeed * M_PI / 60.0;
 
     // read timestamp (currently not used)
     char const* timestamp = buffer + MDMS_COMMAND_LENGTH + 5;
+
+    //DON'T remove line, parseInt advances on the stream
     int device_timestamp = parseInt(4, timestamp);
     if (!timestamp)
         return error(BAD_REPLY);

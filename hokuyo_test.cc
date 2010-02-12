@@ -32,9 +32,42 @@ int main (int argc, const char** argv){
   base::samples::LaserScan ranges;
 
   int test = 1;
-  size_t count = 20;
+  int count = 20;
   if (argc >= 3)
       count = boost::lexical_cast<int>(argv[2]);
+
+  if( count < 0 ) {
+      cout << "Getting ranges..." << endl;
+      if (!urg.startAcquisition(0, -1, -1, 0, 1, 1))
+      {
+	  cerr << "cannot start acquisition: " << urg.errorString() << endl;
+	  perror("errno is");
+	  return 1;
+      }
+      while( count < 0 ) {
+	  if (!urg.readRanges(ranges))
+	  {
+	      cerr << "failed to read ranges: " << urg.errorString() << endl;
+	      perror("errno is");
+	      return 1;
+	  }
+
+	  cout << "RA ";
+	  for (size_t range_idx = 0; range_idx < ranges.ranges.size(); ++range_idx)
+	      cout << ranges.ranges[range_idx] << " ";
+	  
+	  cout << endl;
+	  cout << "RE ";
+	  for (size_t range_idx = 0; range_idx < ranges.ranges.size(); ++range_idx)
+	      cout << ranges.remission[range_idx] << " ";
+
+	  cout << endl;
+
+	  count++;
+      }
+
+      return 0;
+  }
 
   if( count == 0 ) {
       if (!urg.startAcquisition(0, -1, -1, 0, 1, 1))
@@ -52,8 +85,7 @@ int main (int argc, const char** argv){
 	      perror("errno is");
 	      return 1;
 	  }
-
-	  cout <<  ranges.ranges[540] << " " << ranges.remission[540] << "               " << endl;
+	  cout << ranges.ranges[540] << " " << ranges.remission[540] << "\r" << flush;
       }
   }
 
@@ -69,7 +101,7 @@ int main (int argc, const char** argv){
       }
 
       base::Time reftime = base::Time::now();
-      for (unsigned int i = 0; i < count; ++i)
+      for (int i = 0; i < count; ++i)
       {
 	  if (!urg.readRanges(ranges))
 	  {

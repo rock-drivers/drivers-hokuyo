@@ -28,16 +28,6 @@ public:
   /** For internal use */
   static const int MDMS_DATA_OFFSET      = MDMS_TIMESTAMP_OFFSET + 6;
 
-  /** Special values for the ranges. If a range has one of these values, then
-   * it is not valid and the value declares what is going on */
-  enum RANGE_ERRORS {
-      TOO_FAR            = 1, // too far
-      TOO_NEAR           = 2,
-      MEASUREMENT_ERROR  = 3,
-      OTHER_RANGE_ERRORS = 4,
-      MAX_RANGE_ERROR    = 4
-  };
-
   /** This structure is returned by getInfo() to represent various informations
    * on the device.
    */

@@ -116,9 +116,9 @@ int main (int argc, const char** argv){
 	  for (size_t range_idx = 0; range_idx < ranges.ranges.size(); ++range_idx)
 	  {
 	      unsigned int val = ranges.ranges[range_idx];
-	      if (val <= base::samples::LaserScan::MAX_RANGE_ERROR)
+	      if (val <= base::samples::MAX_RANGE_ERROR)
 	      {
-		  if (val == base::samples::LaserScan::TOO_FAR)
+		  if (val == base::samples::TOO_FAR)
 		  {
 		      too_far++;
 		  }

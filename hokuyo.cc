@@ -613,16 +613,16 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
             if (m_info.version == DeviceInfo::URG04LX)
             {
                 if (range.ranges[i] == 0)
-                    range.ranges[i] = base::samples::LaserScan::TOO_FAR;
+                    range.ranges[i] = base::samples::TOO_FAR;
                 else
-                    range.ranges[i] = base::samples::LaserScan::MEASUREMENT_ERROR;
+                    range.ranges[i] = base::samples::MEASUREMENT_ERROR;
             }
             else if (m_info.version == DeviceInfo::UTM30LX)
             {
                 if (range.ranges[i] == 4)
-                    range.ranges[i] = base::samples::LaserScan::TOO_FAR;
+                    range.ranges[i] = base::samples::TOO_FAR;
                 else if (range.ranges[i] > 4)
-                    range.ranges[i] = base::samples::LaserScan::OTHER_RANGE_ERRORS;
+                    range.ranges[i] = base::samples::OTHER_RANGE_ERRORS;
             }
         }
     }

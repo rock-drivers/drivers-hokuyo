@@ -6,6 +6,7 @@ includedir=${prefix}/include
 Name: hokuyo
 Description: Driver for the Hokuyo URG laser scanners (SCIP2)
 Version: @PROJECT_VERSION@
+Requires: base-types
 Libs: -L${libdir} -lhokuyo
 Cflags: -I${includedir}
 

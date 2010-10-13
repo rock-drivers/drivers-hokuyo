@@ -130,6 +130,7 @@ private:
   bool error(ERROR_CODES code);
   bool parseErrorCode(char const* code, StatusCode const* specific_codes);
   bool infoCommand(std::map<std::string, std::string>& result, char const* cmd, bool scip1 = false);
+  bool timeCommand(int &device_timestamp, int timeout);
 
 protected:
   int extractPacket(uint8_t const* buffer, size_t buffer_size) const;

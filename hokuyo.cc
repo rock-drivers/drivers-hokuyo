@@ -104,6 +104,14 @@ static URG::StatusCode URG_SS_STATUS_CODES[] = {
     { 0, URG::END }
 };
 
+static URG::StatusCode URG_TMx_STATUS_CODES[] = {
+    { "01", URG::BAD_COMMAND },
+    { "02", URG::OK }, //adjust on request while already on
+    { "03", URG::OK }, //adjust off request while already off
+    { "04", URG::BAD_STATE }, //time request while adjust off
+    { 0, URG::END }
+};
+
 /** Description of a command without any parameter */
 struct URG::SimpleCommand
 {
@@ -117,6 +125,8 @@ static URG::SimpleCommand URG_BM =  { "BM", URG_BM_STATUS_CODES };
 static URG::SimpleCommand URG_QUIT =  { "QT", 0 };
 static URG::SimpleCommand URG_SCIP2 = { "SCIP2.0", URG_SCIP2_STATUS_CODES };
 static URG::SimpleCommand URG_RESET = { "RS", 0 };
+static URG::SimpleCommand URG_TM0 = { "TM0", URG_TMx_STATUS_CODES };
+static URG::SimpleCommand URG_TM2 = { "TM2", URG_TMx_STATUS_CODES };
 
 char const* URG::errorString(int error_code)
 {
@@ -383,6 +393,43 @@ bool URG::simpleCommand(SimpleCommand const& cmd, int timeout) {
     return parseErrorCode(buf + cmd_size + 1, cmd.specific_codes);
 }
 
+bool URG::timeCommand(int &device_timestamp, int timeout) {
+    const char * cmd = "TM1";
+    char buf[MAX_PACKET_SIZE];
+    int cmd_size = 3;
+    if (!write(cmd))
+        return false;
+
+    int packet_size = readAnswer(buf, MAX_PACKET_SIZE, cmd, timeout);
+    if (packet_size < 0) {
+        return false;
+    }
+
+    char const *status_code = buf + cmd_size + 1;
+    if (!parseErrorCode(status_code, 0))
+    {
+        if (m_error != UNKNOWN)
+            return false;
+
+        int status = atoi(string(status_code, 2).c_str());
+        if (status > 0 && status < 5)
+            return error(BAD_COMMAND);
+
+        // Mmmm .. still an unknown error ...
+        return false;
+    }
+
+    char const* timestamp = buf + cmd_size + 5;
+
+    //DON'T remove line, parseInt advances on the stream
+    device_timestamp = parseInt(4, timestamp);
+    if (!timestamp) {
+	return error(BAD_REPLY);
+    }
+
+    return true;
+}
+
 bool URG::fullReset() {
     cerr << "Resetting scanner..." << flush;
     size_t baudrates[]={19200, 57600, 115200};
@@ -398,6 +445,10 @@ bool URG::fullReset() {
 	// If this is the case, we will also not get a response here,
 	// so don't wait for it.
 	simpleCommand(URG_QUIT, 0);
+
+	//we may be in adjust on mode, so send the command, but don't
+	//check the result, since we may be in non-SCIP2 mode
+	simpleCommand(URG_TM2, 0);
 
         m_error = OK;
         if (simpleCommand(URG_SCIP2, 10000))
@@ -429,6 +480,22 @@ bool URG::fullReset() {
     // Have to wait after the reset, in order to get the device up and working
     timespec tv = { 1, 0 };
     nanosleep(&tv, &tv);
+
+    // now try for synchronisation
+    if (!simpleCommand(URG_TM0, 1000)) {
+	simpleCommand(URG_TM2, 0);
+	return false;
+    }
+    int ts;
+    base::Time t1 = base::Time::now();
+    if (!timeCommand(ts, 1000)) {
+	simpleCommand(URG_TM2, 0);
+	return false;
+    }
+    base::Time t2 = base::Time::now();
+    if (!simpleCommand(URG_TM2, 1000))
+	return false;
+    device_time_offset = t1/2+t2/2-base::Time(0,ts*1000);
 
     return true;
 }
@@ -531,7 +598,7 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
     if (packet_size < 0)
         return false;
 
-    range.time = base::Time::now();
+    //range.time = base::Time::now();
     buffer[packet_size] = 0;
 
     // Check status. Use parseErrorCode for standard error codes, and then do
@@ -573,8 +640,8 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
     range.speed = m_info.motorSpeed * M_PI / 60.0;
     range.minRange = m_info.dMin;
     range.maxRange = m_info.dMax;
-    
-    // read timestamp (currently not used)
+
+    // read timestamp
     char const* timestamp = buffer + MDMS_COMMAND_LENGTH + 5;
 
     //DON'T remove line, parseInt advances on the stream
@@ -584,7 +651,15 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
 
     if (device_timestamp == last_device_timestamp)
 	return error(DUPLICATE);
+
+    //wraparound of the internal timer
+    if (device_timestamp < last_device_timestamp)
+	device_time_offset = device_time_offset + base::Time(0,1 << 24);
+
+    range.time = device_time_offset+base::Time(0,device_timestamp*1000);
+
     last_device_timestamp = device_timestamp;
+
     {
 	// check that the buffer has the right size for the expected readings
 	int data_size = packet_size - MDMS_COMMAND_LENGTH - 11 - 3;

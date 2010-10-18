@@ -57,6 +57,8 @@ static ReturnValueDescription URG_RETURN_DESCRIPTION[] = {
     { URG::NOT_SCIP2_CAPABLE,          "this device is not SCIP2. Upgrade firmware" },
     { URG::INCONSISTEN_RANGE_COUNT,    "did not get the expected count of ranges" },
 
+    { URG::DUPLICATE,                  "device resent a set of ranges" },
+
     { URG::UNKNOWN_DEVICE_VERSION,     "the returned device version is not known to the driver" },
     { URG::UNKNOWN,                    "UNKNOWN" },
 
@@ -130,6 +132,7 @@ URG::URG()
     : IODriver(MAX_PACKET_SIZE)
     , baudrate(19200)
     , m_error(OK)
+    , last_device_timestamp(-1)
 {
     m_last_status[0] = 
         m_last_status[1] = 
@@ -579,6 +582,9 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
     if (!timestamp)
         return error(BAD_REPLY);
 
+    if (device_timestamp == last_device_timestamp)
+	return error(DUPLICATE);
+    last_device_timestamp = device_timestamp;
     {
 	// check that the buffer has the right size for the expected readings
 	int data_size = packet_size - MDMS_COMMAND_LENGTH - 11 - 3;

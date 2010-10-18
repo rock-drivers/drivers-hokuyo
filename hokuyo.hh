@@ -78,6 +78,8 @@ public:
     INCONSISTEN_RANGE_COUNT     = 130,
     WRITE_TIMEOUT               = 131,
 
+    DUPLICATE                   = 132,
+
     UNKNOWN                     = 200,
     INTERNAL_ERROR              = 201,
     UNKNOWN_DEVICE_VERSION      = 202,
@@ -95,6 +97,10 @@ private:
   ERROR_CODES m_error;
   /** The device info. This is read on initialization */
   DeviceInfo  m_info;
+
+  /** The last timestamp from the device */
+  int last_device_timestamp;
+  base::Time device_time_offset;
 
   /** lookup table for remission values */
   static const int MAX_RANGE_READING = 60000;

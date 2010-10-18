@@ -656,7 +656,9 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
     if (device_timestamp < last_device_timestamp)
 	device_time_offset = device_time_offset + base::Time(0,1 << 24);
 
-    range.time = device_time_offset+base::Time(0,device_timestamp*1000);
+    // subtract 3.1 ms for the difference between "back of the scanner"
+    // and measurement 0
+    range.time = device_time_offset+base::Time(0,device_timestamp*1000-3100);
 
     last_device_timestamp = device_timestamp;
 

@@ -495,7 +495,8 @@ bool URG::fullReset() {
     base::Time t2 = base::Time::now();
     if (!simpleCommand(URG_TM2, 1000))
 	return false;
-    device_time_offset = t1/2+t2/2-base::Time(0,ts*1000);
+
+    device_time_offset = t1/2+t2/2-base::Time::fromMicroseconds(ts*1000);
 
     return true;
 }
@@ -654,11 +655,11 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
 
     //wraparound of the internal timer
     if (device_timestamp < last_device_timestamp)
-	device_time_offset = device_time_offset + base::Time(0,1 << 24);
+	device_time_offset = device_time_offset + base::Time::fromMicroseconds(1 << 24);
 
     // subtract 3.1 ms for the difference between "back of the scanner"
     // and measurement 0
-    range.time = device_time_offset+base::Time(0,device_timestamp*1000-3100);
+    range.time = device_time_offset+base::Time::fromMicroseconds(device_timestamp*1000-3100);
 
     last_device_timestamp = device_timestamp;
 

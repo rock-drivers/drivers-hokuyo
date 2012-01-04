@@ -135,7 +135,7 @@ int main (int argc, const char** argv){
 	  int dt = (ranges.time - reftime).toMilliseconds();
 	  if (i != 0 && dt > 30*(test+1))
 	      cerr << "!!!! LATENCY PROBLEM: " << dt << endl;
-	  cout << i << " " << dt << " good=" << good_ranges << " too_far=" << too_far << " bad=" << bad_ranges << "\n";
+	  cout << i << " sample_cnt " << urg.getPacketCounter() <<  " " << dt << " good=" << good_ranges << " too_far=" << too_far << " bad=" << bad_ranges << "\n";
 	  reftime = ranges.time;
       }
 

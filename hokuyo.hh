@@ -114,9 +114,6 @@ private:
   /** estimated sample count */
   int sample_count;
   
-  /** true if remission feature is turned on */
-  bool remission_on;
-  
   /** \overloaded */
   int readAnswer(char* buffer, size_t buffer_size, char const* expected_cmd, int timeout = 1000);
 

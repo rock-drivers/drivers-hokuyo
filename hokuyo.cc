@@ -144,7 +144,6 @@ URG::URG()
     , m_error(OK)
     , last_device_timestamp(-1)
     , sample_count(0)
-    , remission_on(false)
 {
     m_last_status[0] = 
         m_last_status[1] = 
@@ -581,8 +580,6 @@ bool URG::startAcquisition(int nScans, int startStep, int endStep, int scanInter
     if( includeRemission )
 	initRemissionLookup();
     
-    remission_on = includeRemission;
-
     return true;
 }
 
@@ -668,12 +665,6 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
     //period of the device
     base::Time period = base::Time::fromSeconds(1.0 / (range.speed / (M_PI * 2.0)));
     
-    //if remission values are used
-    //the laser scanner need 2 roations
-    //for one scan.
-    if(remission_on)
-	period = period * 2;
-
     //compute the sample counter
     int sample_count_diff = 0;
     if(last_sample_time != base::Time())

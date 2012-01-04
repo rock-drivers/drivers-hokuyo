@@ -101,6 +101,9 @@ private:
   /** The last timestamp from the device */
   int last_device_timestamp;
   base::Time device_time_offset;
+  
+  /** time of the last received sample */
+  base::Time last_sample_time;
 
   /** lookup table for remission values */
   static const int MAX_RANGE_READING = 60000;
@@ -108,6 +111,12 @@ private:
   float normaliseRemission( int raw, int range );
   void initRemissionLookup();
 
+  /** estimated sample count */
+  int sample_count;
+  
+  /** true if remission feature is turned on */
+  bool remission_on;
+  
   /** \overloaded */
   int readAnswer(char* buffer, size_t buffer_size, char const* expected_cmd, int timeout = 1000);
 
@@ -179,6 +188,16 @@ public:
    */
   bool setBaudrate(int brate);
 
+  /**
+   * Returns the packet counter for the 
+   * last received laser scan.
+   * 
+   * Note the packet counter is calculated
+   * from the internal time of the laser
+   * scanner.
+   */
+  int getPacketCounter();
+  
   /** Returns the last error code registered by the driver */
   ERROR_CODES error() const { return m_error; }
   /** Returns the string describing the given error code */

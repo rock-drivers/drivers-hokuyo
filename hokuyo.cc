@@ -143,6 +143,8 @@ URG::URG()
     , baudrate(19200)
     , m_error(OK)
     , last_device_timestamp(-1)
+    , sample_count(0)
+    , remission_on(false)
 {
     m_last_status[0] = 
         m_last_status[1] = 
@@ -578,6 +580,8 @@ bool URG::startAcquisition(int nScans, int startStep, int endStep, int scanInter
     // setup the lookup table for normalising the remission values
     if( includeRemission )
 	initRemissionLookup();
+    
+    remission_on = includeRemission;
 
     return true;
 }
@@ -661,6 +665,24 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
     // and measurement 0
     range.time = device_time_offset+base::Time::fromMicroseconds(device_timestamp*1000-3100);
 
+    //period of the device
+    base::Time period = base::Time::fromSeconds(1.0 / (range.speed / M_PI * 2.0));
+    
+    //if remission values are used
+    //the laser scanner need 2 roations
+    //for one scan.
+    if(remission_on)
+	period = period * 2;
+
+    //compute the sample counter
+    int sample_count_diff = 0;
+    if(last_sample_time != base::Time())
+    {
+	sample_count_diff = round(range.time.toSeconds() - last_sample_time.toSeconds() / period.toSeconds());
+    }    
+    sample_count += sample_count_diff;
+
+    last_sample_time = range.time;
     last_device_timestamp = device_timestamp;
 
     {
@@ -718,6 +740,11 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
     }
 
     return true;
+}
+
+int URG::getPacketCounter()
+{
+    return sample_count;
 }
 
 bool URG::stopAcquisition() {

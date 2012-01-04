@@ -638,7 +638,7 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
 
     range.start_angle = (startStep - m_info.stepFront) * 2.0 * M_PI / m_info.resolution;
     range.angular_resolution = 2.0 * M_PI / m_info.resolution * clusterCount;
-    range.speed = m_info.motorSpeed * M_PI / 60.0;
+    range.speed = m_info.motorSpeed * 2.0 * M_PI / 60.0;
     range.minRange = m_info.dMin;
     range.maxRange = m_info.dMax;
 

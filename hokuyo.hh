@@ -6,7 +6,7 @@
 #include <iosfwd>
 #include <sys/types.h>
 #include <base/samples/laser_scan.h>
-#include <iodrivers_base.hh>
+#include <iodrivers_base/Driver.hpp>
 
 /** This class implements a driver for the Hokuyo laser range finders.
  *
@@ -16,7 +16,7 @@
  * error codes and URG::errorString(int) can return a string describing the
  * exact error.
  */
-class URG : public IODriver {
+class URG : public iodrivers_base::Driver {
 public:
   struct StatusCode;
   struct SimpleCommand;

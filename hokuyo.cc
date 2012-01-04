@@ -139,7 +139,7 @@ char const* URG::errorString(int error_code)
 }
 
 URG::URG()
-    : IODriver(MAX_PACKET_SIZE)
+    : Driver(MAX_PACKET_SIZE)
     , baudrate(19200)
     , m_error(OK)
     , last_device_timestamp(-1)
@@ -185,10 +185,10 @@ bool URG::write(char const* string, int timeout)
     size_t cmd_size = strlen(buffer);
     try
     {
-        IODriver::writePacket(reinterpret_cast<uint8_t*>(buffer), cmd_size, timeout);
+        Driver::writePacket(reinterpret_cast<uint8_t*>(buffer), cmd_size, timeout);
         return true;
     }
-    catch(timeout_error)  { return error(WRITE_TIMEOUT); }
+    catch(iodrivers_base::TimeoutError)  { return error(WRITE_TIMEOUT); }
     catch(...) { return error(WRITE_FAILED); }
 }
 
@@ -331,7 +331,7 @@ int URG::readAnswer(char* buffer, size_t buffer_size, char const** expected_cmds
             }
         }
     }
-    catch(timeout_error) { error(READ_TIMEOUT); return -1; }
+    catch(iodrivers_base::TimeoutError) { error(READ_TIMEOUT); return -1; }
     catch(std::exception &e) { cerr << e.what() << endl; error(READ_FAILED); return -1; }
 }
 
@@ -745,12 +745,12 @@ bool URG::stopAcquisition() {
 bool URG::close() {
     stopAcquisition();
     setBaudrate(19200);
-    IODriver::close();
+    Driver::close();
     return true;
 }
 
 bool URG::open(std::string const& filename){
-    if (! IODriver::openSerial(filename, 19200))
+    if (! Driver::openSerial(filename, 19200))
         return false;
 
     int desired_baudrate = baudrate;

@@ -666,7 +666,7 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
     range.time = device_time_offset+base::Time::fromMicroseconds(device_timestamp*1000-3100);
 
     //period of the device
-    base::Time period = base::Time::fromSeconds(1.0 / (range.speed / M_PI * 2.0));
+    base::Time period = base::Time::fromSeconds(1.0 / (range.speed / (M_PI * 2.0)));
     
     //if remission values are used
     //the laser scanner need 2 roations
@@ -678,7 +678,7 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
     int sample_count_diff = 0;
     if(last_sample_time != base::Time())
     {
-	sample_count_diff = round(range.time.toSeconds() - last_sample_time.toSeconds() / period.toSeconds());
+	sample_count_diff = round((range.time.toSeconds() - last_sample_time.toSeconds()) / period.toSeconds());
     }    
     sample_count += sample_count_diff;
 

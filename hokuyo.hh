@@ -48,7 +48,7 @@ public:
       int stepMin;    /// the first measurable range
       int stepMax;    /// the last measurable step
       int stepFront;  /// the step number in front of the device
-      int motorSpeed; /// Motor speed in turn per minute
+      float motorSpeed; /// Device speed in Hz (turns per second)
   };
 
   /** All the possible error codes that can be returned by URG::error() */

@@ -292,7 +292,7 @@ bool URG::readInfo()
     m_info.stepMin    = atoi(fields["AMIN"].c_str());
     m_info.stepMax    = atoi(fields["AMAX"].c_str());
     m_info.stepFront  = atoi(fields["AFRT"].c_str());
-    m_info.motorSpeed = atoi(fields["SCAN"].c_str());
+    m_info.motorSpeed = static_cast<float>(atoi(fields["SCAN"].c_str())) / 60;
     return true;
 }
 
@@ -591,7 +591,7 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
     // two cycles are needed for transmission. 
     // a timeout of 5 cycles should be safe for all cases
     if (timeout == -1)
-        timeout = 5 * 60000 / m_info.motorSpeed;
+        timeout = 5 * 1000 / m_info.motorSpeed;
 
     char const* expected_cmds[] = { "MD", "ME", "MS", 0 };
 
@@ -639,7 +639,7 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
 
     range.start_angle = (startStep - m_info.stepFront) * 2.0 * M_PI / m_info.resolution;
     range.angular_resolution = 2.0 * M_PI / m_info.resolution * clusterCount;
-    range.speed = m_info.motorSpeed * 2.0 * M_PI / 60.0;
+    range.speed = m_info.motorSpeed * 2.0 * M_PI;
     range.minRange = m_info.dMin;
     range.maxRange = m_info.dMax;
 
@@ -815,7 +815,7 @@ std::ostream& operator << (ostream& io, URG::DeviceInfo info)
         << "  scan range:  [" << info.dMin << ", " << info.dMax << "]" << "\n"
         << "  resolution:  :" << info.resolution << " steps, " << deg_per_step << " degree per step\n"
         << "  scan region: " << info.stepMax - info.stepMin + 1 << " steps, " << (info.stepMax - info.stepMin + 1) * deg_per_step << " deg\n"
-        << "  scan period: " << 60000 / info.motorSpeed << "ms" << endl;
+        << "  scan period: " << 1000 / info.motorSpeed << "ms" << endl;
 
     return io;
 }

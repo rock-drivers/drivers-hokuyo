@@ -304,8 +304,7 @@ int URG::readAnswer(char* buffer, size_t buffer_size, char const* expected_cmd, 
 
 int URG::readAnswer(char* buffer, size_t buffer_size, char const** expected_cmds, int timeout)
 {
-    timeval start_time;
-    gettimeofday(&start_time, 0);
+    base::Time start_time = base::Time::now();
     try
     {
         while(true)
@@ -328,6 +327,12 @@ int URG::readAnswer(char* buffer, size_t buffer_size, char const** expected_cmds
 
                 std::cerr << "ignored packet " << printable_com(message) << endl;
                 continue;
+            }
+
+            if ((base::Time::now() - start_time).toMilliseconds() > timeout)
+            {
+                error(READ_TIMEOUT);
+                return -1;
             }
         }
     }

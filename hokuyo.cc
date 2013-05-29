@@ -747,11 +747,10 @@ bool URG::stopAcquisition() {
     return URG::simpleCommand(URG_QUIT);
 }
 
-bool URG::close() {
+void URG::close() {
     stopAcquisition();
     setBaudrate(19200);
     Driver::close();
-    return true;
 }
 
 bool URG::open(std::string const& filename){

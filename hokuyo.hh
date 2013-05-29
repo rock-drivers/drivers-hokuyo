@@ -152,7 +152,7 @@ public:
    * rate is 19200 and it is not scanning */
   bool fullReset();
   /** Closes the device */
-  bool close();
+  void close();
   /** Returns the device info structure. This does not access the device,
    * as the structure is read at initialization in open() */
   DeviceInfo getInfo() const { return m_info; };

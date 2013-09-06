@@ -267,7 +267,7 @@ bool URG::readInfo()
     if ( !URG::infoCommand(fields, "PP") )
         return false;
 
-    if (fields["STAT"] != "Sensor works well.")
+    if (fields["STAT"] != "Stable 000 no error." && fields["STAT"] != "Sensor works well.")
     {
         std::cerr << fields["STAT"] << std::endl;
         return error(BAD_STATE);
@@ -436,7 +436,43 @@ bool URG::timeCommand(int &device_timestamp, int timeout) {
     return true;
 }
 
-bool URG::fullReset() {
+bool URG::initCommunication()
+{
+    // before doing anything send a quit command, since
+    // the scanner could still be in continous mode.
+    // If this is the case, we will also not get a response here,
+    // so don't wait for it.
+    simpleCommand(URG_QUIT, 0);
+
+    //we may be in adjust on mode, so send the command, but don't
+    //check the result, since we may be in non-SCIP2 mode
+    simpleCommand(URG_TM2, 0);
+
+    m_error = OK;
+    if (simpleCommand(URG_SCIP2, 10000))
+    {
+        if (!simpleCommand(URG_QUIT, 10000))
+            return false;
+        if (!simpleCommand(URG_RESET, 10000))
+            return false;
+        return true;
+    }
+
+    if (error() == NOT_SCIP2_CAPABLE)
+    {
+        map<string, string> fields;
+        infoCommand(fields, "V");
+        return error(NOT_SCIP2_CAPABLE);
+    }
+ 
+    // Have to wait after the reset, in order to get the device up and working
+    timespec tv = { 1, 0 };
+    nanosleep(&tv, &tv);
+
+    return true;
+}
+
+bool URG::fullSerialReset() {
     cerr << "Resetting scanner..." << flush;
     size_t baudrates[]={19200, 57600, 115200};
     const int baudrates_count = 3;
@@ -446,31 +482,8 @@ bool URG::fullReset() {
         if (!setSerialBaudrate(baudrates[i]))
             return error(URG::BAD_HOST_RATE);;
 
-	// before doing anything send a quit command, since
-	// the scanner could still be in continous mode.
-	// If this is the case, we will also not get a response here,
-	// so don't wait for it.
-	simpleCommand(URG_QUIT, 0);
-
-	//we may be in adjust on mode, so send the command, but don't
-	//check the result, since we may be in non-SCIP2 mode
-	simpleCommand(URG_TM2, 0);
-
-        m_error = OK;
-        if (simpleCommand(URG_SCIP2, 10000))
-        {
-            if (!simpleCommand(URG_QUIT, 10000))
-                return false;
-            if (!simpleCommand(URG_RESET, 10000))
-                return false;
-            break;
-        }
-        else if (error() == NOT_SCIP2_CAPABLE)
-        {
-            map<string, string> fields;
-            infoCommand(fields, "V");
-            return error(NOT_SCIP2_CAPABLE);
-        }
+        if (!initCommunication())
+            return false;
     }
 
     if (i == baudrates_count)
@@ -482,11 +495,11 @@ bool URG::fullReset() {
     // Set baud rate to default
     cerr << " done" << endl;
     baudrate = 19200;
- 
-    // Have to wait after the reset, in order to get the device up and working
-    timespec tv = { 1, 0 };
-    nanosleep(&tv, &tv);
+    return true;
+}
 
+bool URG::measureCommunicationLatency()
+{
     // now try for synchronisation
     if (!simpleCommand(URG_TM0, 1000)) {
 	simpleCommand(URG_TM2, 0);
@@ -503,7 +516,6 @@ bool URG::fullReset() {
 	return false;
 
     device_time_offset = t1/2+t2/2-base::Time::fromMicroseconds(ts*1000);
-
     return true;
 }
 
@@ -753,14 +765,28 @@ void URG::close() {
     Driver::close();
 }
 
+void URG::openURI(std::string const& filename) {
+    Driver::openURI(filename);
+
+    // Reset the scanner
+    if (! initCommunication())
+        throw std::runtime_error("failed to initialize communication with the device");
+    if (! measureCommunicationLatency())
+        throw std::runtime_error("failed to measure communication latency");
+    if (! readInfo())
+        throw std::runtime_error("failed to read device information");
+}
+
 bool URG::open(std::string const& filename){
     if (! Driver::openSerial(filename, 19200))
         return false;
 
     int desired_baudrate = baudrate;
 
-    // Reset the scanner
-    if (! fullReset())
+    // Reset the scanner. It calls initCommunication already
+    if (! fullSerialReset())
+        return false;
+    if (! measureCommunicationLatency())
         return false;
 
     if (desired_baudrate != baudrate)

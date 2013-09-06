@@ -147,10 +147,17 @@ public:
 
   /** Open the device, reset it and read device information. After this call,
    * the baud rate is 19200 and the device is not scanning */
+  void openURI(std::string const& filename);
+  /** Open the device, reset it and read device information. After this call,
+   * the baud rate is 19200 and the device is not scanning */
   bool open(std::string const& filename);
   /** Performs a full reset of the device. After this call, the device baud
    * rate is 19200 and it is not scanning */
-  bool fullReset();
+  bool fullSerialReset();
+  /** Initializes communication to the device */
+  bool initCommunication();
+  /** Measures communication latency */
+  bool measureCommunicationLatency();
   /** Closes the device */
   void close();
   /** Returns the device info structure. This does not access the device,

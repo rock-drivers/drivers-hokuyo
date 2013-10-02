@@ -436,7 +436,7 @@ bool URG::timeCommand(int &device_timestamp, int timeout) {
     return true;
 }
 
-bool URG::fullReset() {
+bool URG::fullReset( int timeout ) {
     cerr << "Resetting scanner..." << flush;
     size_t baudrates[]={19200, 57600, 115200};
     const int baudrates_count = 3;
@@ -457,11 +457,11 @@ bool URG::fullReset() {
 	simpleCommand(URG_TM2, 0);
 
         m_error = OK;
-        if (simpleCommand(URG_SCIP2, 10000))
+        if (simpleCommand(URG_SCIP2, timeout))
         {
-            if (!simpleCommand(URG_QUIT, 10000))
+            if (!simpleCommand(URG_QUIT, timeout))
                 return false;
-            if (!simpleCommand(URG_RESET, 10000))
+            if (!simpleCommand(URG_RESET, timeout))
                 return false;
             break;
         }
@@ -488,18 +488,18 @@ bool URG::fullReset() {
     nanosleep(&tv, &tv);
 
     // now try for synchronisation
-    if (!simpleCommand(URG_TM0, 1000)) {
+    if (!simpleCommand(URG_TM0, timeout)) {
 	simpleCommand(URG_TM2, 0);
 	return false;
     }
     int ts;
     base::Time t1 = base::Time::now();
-    if (!timeCommand(ts, 1000)) {
+    if (!timeCommand(ts, timeout)) {
 	simpleCommand(URG_TM2, 0);
 	return false;
     }
     base::Time t2 = base::Time::now();
-    if (!simpleCommand(URG_TM2, 1000))
+    if (!simpleCommand(URG_TM2, timeout))
 	return false;
 
     device_time_offset = t1/2+t2/2-base::Time::fromMicroseconds(ts*1000);

@@ -27,6 +27,9 @@ TARGET_LINK_LIBRARIES(hokuyo ${BASE_TYPES_LIBRARIES} ${IO_LIBRARIES})
 ADD_EXECUTABLE(hokuyo_test hokuyo_test.cc)
 TARGET_LINK_LIBRARIES(hokuyo_test hokuyo)
 
+ADD_EXECUTABLE(urg_serial hokuyo_serial.cpp)
+TARGET_LINK_LIBRARIES(urg_serial hokuyo)
+
 ADD_EXECUTABLE(hokuyo_acq hokuyo_acq.cc)
 TARGET_LINK_LIBRARIES(hokuyo_acq hokuyo)
 

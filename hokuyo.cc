@@ -18,6 +18,8 @@
 #include <fcntl.h>
 #include <errno.h>
 
+#include <base/Logging.hpp>
+
 using namespace std;
 
 struct URG::StatusCode
@@ -269,7 +271,7 @@ bool URG::readInfo()
 
     if (fields["STAT"] != "Sensor works well.")
     {
-        std::cerr << fields["STAT"] << std::endl;
+        LOG_DEBUG_S << fields["STAT"] << std::endl;
         return error(BAD_STATE);
     }
 
@@ -281,7 +283,7 @@ bool URG::readInfo()
     else
     {
         m_info.version = DeviceInfo::UNKNOWN;
-        std::cerr << "driver returned version '" << version << "', which is not known to the driver" << std::endl;
+        LOG_ERROR_S << "driver returned version '" << version << "', which is not known to the driver" << std::endl;
         return error(UNKNOWN_DEVICE_VERSION);
     }
 
@@ -325,7 +327,7 @@ int URG::readAnswer(char* buffer, size_t buffer_size, char const** expected_cmds
                 else
                     message = string(buffer, packet_size);
 
-                std::cerr << "ignored packet " << printable_com(message) << endl;
+                LOG_WARN_S << "ignored packet " << printable_com(message) << endl;
                 continue;
             }
 
@@ -337,7 +339,7 @@ int URG::readAnswer(char* buffer, size_t buffer_size, char const** expected_cmds
         }
     }
     catch(iodrivers_base::TimeoutError) { error(READ_TIMEOUT); return -1; }
-    catch(std::exception &e) { cerr << e.what() << endl; error(READ_FAILED); return -1; }
+    catch(std::exception &e) { LOG_ERROR_S << e.what() << endl; error(READ_FAILED); return -1; }
 }
 
 int URG::extractPacket(uint8_t const* buffer, size_t buffer_size) const {
@@ -383,7 +385,7 @@ bool URG::parseErrorCode(char const* code, StatusCode const* specific_codes)
                 return error(code_set->ret_code);
         }
     }
-    cerr << "unknown error code " << printable_com(string(code, 2)) << endl;
+    LOG_ERROR_S << "unknown error code " << printable_com(string(code, 2)) << endl;
     return error(UNKNOWN);
 }
 
@@ -437,7 +439,7 @@ bool URG::timeCommand(int &device_timestamp, int timeout) {
 }
 
 bool URG::fullReset( int timeout ) {
-    cerr << "Resetting scanner..." << flush;
+    LOG_INFO_S << "Resetting scanner..." << flush;
     size_t baudrates[]={19200, 57600, 115200};
     const int baudrates_count = 3;
 
@@ -480,7 +482,7 @@ bool URG::fullReset( int timeout ) {
         return error(URG::BAD_HOST_RATE);;
 
     // Set baud rate to default
-    cerr << " done" << endl;
+    LOG_INFO_S << " done" << endl;
     baudrate = 19200;
  
     // Have to wait after the reset, in order to get the device up and working
@@ -552,7 +554,7 @@ bool URG::startAcquisition(int nScans, int startStep, int endStep, int scanInter
     if (endStep == -1)
         endStep = m_info.stepMax;
 
-    cerr << "switched on laser ..." << endl;
+    LOG_INFO_S << "switched on laser ..." << endl;
 
     char command[1024];
     sprintf (command, "MD%04d%04d%02d%1d%02d", startStep, endStep, clusterCount, scanInterval, nScans);
@@ -563,7 +565,7 @@ bool URG::startAcquisition(int nScans, int startStep, int endStep, int scanInter
 
     if ((int)strlen(command) != MDMS_COMMAND_LENGTH)
     {
-        cerr << "MDMS_COMMAND_LENGTH does not match the size of the command we are sending. Fix the code." << endl;
+        LOG_ERROR_S << "MDMS_COMMAND_LENGTH does not match the size of the command we are sending. Fix the code." << endl;
         return error(INTERNAL_ERROR);
     }
 
@@ -689,9 +691,11 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
 
 	if( data_size != expected_size )
 	{
-	    cerr << "inconsisted buffer size, expected " << expected_size << " got " << data_size << endl;
+	    LOG_ERROR_S << "inconsisted buffer size, expected " << expected_size << " got " << data_size << endl;
 	    if( expected_size < data_size )
-		cerr << "remaining bytes in buffer: " << printable_com(buffer+MDMS_COMMAND_LENGTH+11+3+expected_size) << endl;
+	    {
+		LOG_ERROR_S << "remaining bytes in buffer: " << printable_com(buffer+MDMS_COMMAND_LENGTH+11+3+expected_size) << endl;
+	    }
 	    return error(INCONSISTEN_RANGE_COUNT);
 	}
     }
@@ -730,8 +734,8 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
     }
     if (data && data[1] != '\n')
     {
-        cerr << "expected " << expected_count << " ranges, but got more" << endl;
-        cerr << "remaining bytes in buffer: " << printable_com(data) << endl;
+        LOG_ERROR_S << "expected " << expected_count << " ranges, but got more" << endl;
+        LOG_ERROR_S << "remaining bytes in buffer: " << printable_com(data) << endl;
         return error(BAD_REPLY);
     }
 

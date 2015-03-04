@@ -267,7 +267,7 @@ bool URG::readInfo()
     if ( !URG::infoCommand(fields, "PP") )
         return false;
 
-    if (fields["STAT"] != "Stable 000 no error." && fields["STAT"] != "Sensor works well.")
+    if (fields["STAT"] != "Stable 000 no error." && fields["STAT"] != "Sensor works well." && fields["STAT"] != "sensor is working normally")
     {
         std::cerr << fields["STAT"] << std::endl;
         return error(BAD_STATE);
@@ -278,6 +278,8 @@ bool URG::readInfo()
         m_info.version = DeviceInfo::UTM30LX;
     else if (version == "URG-04LX")
         m_info.version = DeviceInfo::URG04LX;
+    else if (version == "UST-20LX")
+        m_info.version = DeviceInfo::UST20LX;
     else
     {
         m_info.version = DeviceInfo::UNKNOWN;

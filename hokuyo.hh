@@ -38,6 +38,7 @@ public:
       enum VERSIONS {
           URG04LX,
           UTM30LX,
+          UST20LX,
           UNKNOWN
       };
       std::map<std::string, std::string> values;

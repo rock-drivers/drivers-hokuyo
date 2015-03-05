@@ -398,7 +398,11 @@ bool URG::simpleCommand(SimpleCommand const& cmd, int timeout) {
     int packet_size = readAnswer(buf, MAX_PACKET_SIZE, cmd.name, timeout);
     if (packet_size < 0)
         return false;
-    return parseErrorCode(buf + cmd_size + 1, cmd.specific_codes);
+
+   if (strcmp(cmd.name,"SCIP2.0") == 0)
+       return parseErrorCode(buf + cmd_size, cmd.specific_codes);
+
+   return parseErrorCode(buf + cmd_size + 1, cmd.specific_codes);
 }
 
 bool URG::timeCommand(int &device_timestamp, int timeout) {

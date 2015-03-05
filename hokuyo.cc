@@ -767,7 +767,6 @@ bool URG::stopAcquisition() {
 
 void URG::close() {
     stopAcquisition();
-    setBaudrate(19200);
     Driver::close();
 }
 

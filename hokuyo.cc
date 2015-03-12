@@ -767,6 +767,8 @@ bool URG::stopAcquisition() {
 
 void URG::close() {
     stopAcquisition();
+    // needed for backward compatibility with 
+    if(m_info.version == DeviceInfo::URG04LX) setBaudrate(19200);
     Driver::close();
 }
 

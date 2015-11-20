@@ -21,24 +21,32 @@ static bool keypressed()
 
 int main (int argc, const char** argv){
   if (argc<2){
-    printf( "Usage: %s <device> ", argv[0]);
+    printf( "Usage: %s [-uri] <device> ", argv[0]);
     return 0;
   }
 
   URG urg;
-  if (!urg.setBaudrate(115200))
+  if (string(argv[1]) == "-uri")
   {
-      cerr << "cannot set baudrate: " << urg.errorString() << endl;
-      perror("errno is");
-      return 1;
+      urg.openURI(argv[2]);
+  }
+  else
+  {
+      if (!urg.setBaudrate(115200))
+      {
+          cerr << "cannot set baudrate: " << urg.errorString() << endl;
+          perror("errno is");
+          return 1;
+      }
+
+      if (!urg.open(argv[1]))
+      {
+          cerr << "cannot open device: " << urg.errorString() << endl;
+          perror("errno is");
+          return 1;
+      }
   }
 
-  if (!urg.open(argv[1]))
-  {
-      cerr << "cannot open device: " << urg.errorString() << endl;
-      perror("errno is");
-      return 1;
-  }
   cerr << urg.getInfo() << endl;
 
   if (!urg.startAcquisition(0))

@@ -38,6 +38,7 @@ public:
       enum VERSIONS {
           URG04LX,
           UTM30LX,
+          UST20LX,
           UNKNOWN
       };
       std::map<std::string, std::string> values;
@@ -147,10 +148,17 @@ public:
 
   /** Open the device, reset it and read device information. After this call,
    * the baud rate is 19200 and the device is not scanning */
+  void openURI(std::string const& filename);
+  /** Open the device, reset it and read device information. After this call,
+   * the baud rate is 19200 and the device is not scanning */
   bool open(std::string const& filename);
   /** Performs a full reset of the device. After this call, the device baud
    * rate is 19200 and it is not scanning */
-  bool fullReset( int timeout = 1000 );
+  bool fullSerialReset();
+  /** Initializes communication to the device */
+  bool initCommunication(int timeout = 1000);
+  /** Measures communication latency */
+  bool measureCommunicationLatency(int timeout = 1000);
   /** Closes the device */
   void close();
   /** Returns the device info structure. This does not access the device,
@@ -206,4 +214,3 @@ public:
 std::ostream& operator << (std::ostream& io, URG::DeviceInfo info);
 
 #endif
-

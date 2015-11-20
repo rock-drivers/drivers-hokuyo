@@ -269,7 +269,7 @@ bool URG::readInfo()
     if ( !URG::infoCommand(fields, "PP") )
         return false;
 
-    if (fields["STAT"] != "Sensor works well.")
+    if (fields["STAT"] != "Stable 000 no error." && fields["STAT"] != "Sensor works well." && fields["STAT"] != "sensor is working normally")
     {
         LOG_DEBUG_S << fields["STAT"] << std::endl;
         return error(BAD_STATE);
@@ -280,6 +280,8 @@ bool URG::readInfo()
         m_info.version = DeviceInfo::UTM30LX;
     else if (version == "URG-04LX")
         m_info.version = DeviceInfo::URG04LX;
+    else if (version == "UST-20LX")
+        m_info.version = DeviceInfo::UST20LX;
     else
     {
         m_info.version = DeviceInfo::UNKNOWN;
@@ -398,7 +400,11 @@ bool URG::simpleCommand(SimpleCommand const& cmd, int timeout) {
     int packet_size = readAnswer(buf, MAX_PACKET_SIZE, cmd.name, timeout);
     if (packet_size < 0)
         return false;
-    return parseErrorCode(buf + cmd_size + 1, cmd.specific_codes);
+
+   if (strcmp(cmd.name,"SCIP2.0") == 0)
+       return parseErrorCode(buf + cmd_size, cmd.specific_codes);
+
+   return parseErrorCode(buf + cmd_size + 1, cmd.specific_codes);
 }
 
 bool URG::timeCommand(int &device_timestamp, int timeout) {
@@ -438,7 +444,43 @@ bool URG::timeCommand(int &device_timestamp, int timeout) {
     return true;
 }
 
-bool URG::fullReset( int timeout ) {
+bool URG::initCommunication(int timeout)
+{
+    // before doing anything send a quit command, since
+    // the scanner could still be in continous mode.
+    // If this is the case, we will also not get a response here,
+    // so don't wait for it.
+    simpleCommand(URG_QUIT, 0);
+
+    //we may be in adjust on mode, so send the command, but don't
+    //check the result, since we may be in non-SCIP2 mode
+    simpleCommand(URG_TM2, 0);
+
+    m_error = OK;
+    if (simpleCommand(URG_SCIP2, timeout))
+    {
+        if (!simpleCommand(URG_QUIT, timeout))
+            return false;
+        if (!simpleCommand(URG_RESET, timeout))
+            return false;
+        return true;
+    }
+
+    if (error() == NOT_SCIP2_CAPABLE)
+    {
+        map<string, string> fields;
+        infoCommand(fields, "V");
+        return error(NOT_SCIP2_CAPABLE);
+    }
+ 
+    // Have to wait after the reset, in order to get the device up and working
+    timespec tv = { 1, 0 };
+    nanosleep(&tv, &tv);
+
+    return true;
+}
+
+bool URG::fullSerialReset() {
     LOG_INFO_S << "Resetting scanner..." << flush;
     size_t baudrates[]={19200, 57600, 115200};
     const int baudrates_count = 3;
@@ -448,31 +490,8 @@ bool URG::fullReset( int timeout ) {
         if (!setSerialBaudrate(baudrates[i]))
             return error(URG::BAD_HOST_RATE);;
 
-	// before doing anything send a quit command, since
-	// the scanner could still be in continous mode.
-	// If this is the case, we will also not get a response here,
-	// so don't wait for it.
-	simpleCommand(URG_QUIT, 0);
-
-	//we may be in adjust on mode, so send the command, but don't
-	//check the result, since we may be in non-SCIP2 mode
-	simpleCommand(URG_TM2, 0);
-
-        m_error = OK;
-        if (simpleCommand(URG_SCIP2, timeout))
-        {
-            if (!simpleCommand(URG_QUIT, timeout))
-                return false;
-            if (!simpleCommand(URG_RESET, timeout))
-                return false;
-            break;
-        }
-        else if (error() == NOT_SCIP2_CAPABLE)
-        {
-            map<string, string> fields;
-            infoCommand(fields, "V");
-            return error(NOT_SCIP2_CAPABLE);
-        }
+        if (!initCommunication() )
+            return false;
     }
 
     if (i == baudrates_count)
@@ -484,11 +503,11 @@ bool URG::fullReset( int timeout ) {
     // Set baud rate to default
     LOG_INFO_S << " done" << endl;
     baudrate = 19200;
- 
-    // Have to wait after the reset, in order to get the device up and working
-    timespec tv = { 1, 0 };
-    nanosleep(&tv, &tv);
+    return true;
+}
 
+bool URG::measureCommunicationLatency(int timeout)
+{
     // now try for synchronisation
     if (!simpleCommand(URG_TM0, timeout)) {
 	simpleCommand(URG_TM2, 0);
@@ -505,7 +524,6 @@ bool URG::fullReset( int timeout ) {
 	return false;
 
     device_time_offset = t1/2+t2/2-base::Time::fromMicroseconds(ts*1000);
-
     return true;
 }
 
@@ -753,8 +771,21 @@ bool URG::stopAcquisition() {
 
 void URG::close() {
     stopAcquisition();
-    setBaudrate(19200);
+    // needed for backward compatibility with 
+    if(m_info.version == DeviceInfo::URG04LX) setBaudrate(19200);
     Driver::close();
+}
+
+void URG::openURI(std::string const& filename) {
+    Driver::openURI(filename);
+
+    // Reset the scanner
+    if (! initCommunication())
+        throw std::runtime_error("failed to initialize communication with the device");
+    if (! measureCommunicationLatency())
+        throw std::runtime_error("failed to measure communication latency");
+    if (! readInfo())
+        throw std::runtime_error("failed to read device information");
 }
 
 bool URG::open(std::string const& filename){
@@ -763,8 +794,10 @@ bool URG::open(std::string const& filename){
 
     int desired_baudrate = baudrate;
 
-    // Reset the scanner
-    if (! fullReset())
+    // Reset the scanner. It calls initCommunication already
+    if (! fullSerialReset())
+        return false;
+    if (! measureCommunicationLatency())
         return false;
 
     if (desired_baudrate != baudrate)
@@ -827,5 +860,4 @@ std::ostream& operator << (ostream& io, URG::DeviceInfo info)
 
     return io;
 }
-
 

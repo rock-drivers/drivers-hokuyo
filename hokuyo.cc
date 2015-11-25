@@ -494,9 +494,6 @@ bool URG::fullSerialReset() {
             return false;
     }
 
-    if (i == baudrates_count)
-        return false;
-
     if (!setSerialBaudrate(19200))
         return error(URG::BAD_HOST_RATE);;
 

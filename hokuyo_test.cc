@@ -7,25 +7,33 @@
 using namespace std;
 
 int main (int argc, const char** argv){
-  if (argc<2){
-    printf( "Usage: urg_test <device> [count]");
+  if (argc<3){
+    printf( "Usage: urg_test <\"uri\"|\"serial\"> <device> [count]");
     return 0;
   }
 
   URG urg;
   if (!urg.setBaudrate(115200))
   {
-      cerr << "cannot set baudrate: " << urg.errorString() << endl;
-      perror("errno is");
-      return 1;
+    cerr << "cannot set baudrate: " << urg.errorString() << endl;
+    perror("errno is");
+    return 1;
   }
 
-  if (!urg.open(argv[1]))
+  if (argv[1]=="serial")
   {
+    if (!urg.open(argv[2]))
+    {
       cerr << "cannot open device: " << urg.errorString() << endl;
       perror("errno is");
       return 1;
+    }
   }
+  else
+  {
+    urg.openURI(argv[2]);
+  }
+
   URG::DeviceInfo device = urg.getInfo();
   cout << urg.getInfo() << endl;
 
@@ -33,8 +41,8 @@ int main (int argc, const char** argv){
 
   int test = 1;
   int count = 20;
-  if (argc >= 3)
-      count = boost::lexical_cast<int>(argv[2]);
+  if (argc >= 4)
+      count = boost::lexical_cast<int>(argv[3]);
 
   if( count < 0 ) {
       cout << "Getting ranges..." << endl;

@@ -3,6 +3,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include <boost/lexical_cast.hpp>
+#include <cstring>
 
 using namespace std;
 
@@ -20,7 +21,7 @@ int main (int argc, const char** argv){
     return 1;
   }
 
-  if (argv[1]=="serial")
+  if (std::strcmp(argv[1],"serial") == 0)
   {
     if (!urg.open(argv[2]))
     {

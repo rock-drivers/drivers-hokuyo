@@ -364,12 +364,13 @@ bool URG::parseErrorCode(char const* code, StatusCode const* specific_codes)
 {
     StatusCode const* try_codes[3] = { URG_COMMON_OK, specific_codes, URG_COMMON_STATUS_CODES };
 
-    if (code[1] == '\n')
-    {
-        if (code[0] == '0')
-            return true;
-        else
-            return error(NOT_SCIP2_CAPABLE);
+    // SCIP 1.1 OK ("0\n") answer (when switching to SCIP 2.0) just returns true.
+    if (code[1] == '\n') {
+	if(code[0] == '0') {
+	    return true;
+	} else {
+	    return error(NOT_SCIP2_CAPABLE);
+	}
     }
 
     m_last_status[0] = code[0];
@@ -394,15 +395,35 @@ bool URG::parseErrorCode(char const* code, StatusCode const* specific_codes)
 bool URG::simpleCommand(SimpleCommand const& cmd, int timeout) {
     char buf[MAX_PACKET_SIZE];
     size_t cmd_size = strlen(cmd.name);
+
     if (!write(cmd.name))
         return false;
 
     int packet_size = readAnswer(buf, MAX_PACKET_SIZE, cmd.name, timeout);
+    
+    /*
+    printf("Answer: ");
+    for(int i=0; i < packet_size; i++) {
+	char c = buf[i];
+	std::string lf;
+	if(c == 10)
+	    lf = "LF";
+	if(c == 13)
+	    lf = "CR";
+	if(lf.empty())
+	    printf("%c(%d) ", c, (int)c);
+	else 
+	    printf("%s(%d) ", lf.c_str(), (int)c);
+    }
+    printf("\n");
+    */
+    
     if (packet_size < 0)
         return false;
 
-   if (strcmp(cmd.name,"SCIP2.0") == 0)
-       return parseErrorCode(buf + cmd_size, cmd.specific_codes);
+   // Passing the LF of the command to the error code parser is not a fix.
+   //if (strcmp(cmd.name,"SCIP2.0") == 0)
+   //    return parseErrorCode(buf + cmd_size, cmd.specific_codes);
 
    return parseErrorCode(buf + cmd_size + 1, cmd.specific_codes);
 }
@@ -457,12 +478,20 @@ bool URG::initCommunication(int timeout)
     simpleCommand(URG_TM2, 0);
 
     m_error = OK;
+    // Already in SCIP2.0 mode this command will return false, 0E (Undefined Command 2),
+    // otherwise the SCIP1.1 OK returns true and an SCIP1.1 error returns NOT_SCIP2_CAPABLE.
     if (simpleCommand(URG_SCIP2, timeout))
     {
+	// Are these commands required if we switch to SCIP2.0?
         if (!simpleCommand(URG_QUIT, timeout))
             return false;
         if (!simpleCommand(URG_RESET, timeout))
             return false;
+	
+	// Have to wait after the reset, in order to get the device up and working
+	timespec tv = { 1, 0 };
+	nanosleep(&tv, &tv);
+	
         return true;
     }
 
@@ -472,10 +501,6 @@ bool URG::initCommunication(int timeout)
         infoCommand(fields, "V");
         return error(NOT_SCIP2_CAPABLE);
     }
- 
-    // Have to wait after the reset, in order to get the device up and working
-    timespec tv = { 1, 0 };
-    nanosleep(&tv, &tv);
 
     return true;
 }

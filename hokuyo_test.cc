@@ -20,7 +20,7 @@ int main (int argc, const char** argv){
     return 1;
   }
 
-  if (argv[1]=="serial")
+  if (strcmp(argv[1], "serial") == 0)
   {
     if (!urg.open(argv[2]))
     {

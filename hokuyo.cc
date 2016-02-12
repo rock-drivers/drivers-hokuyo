@@ -545,7 +545,7 @@ bool URG::measureCommunicationLatency(int timeout)
     if (!simpleCommand(URG_TM2, timeout))
 	return false;
 
-    device_time_offset = t1/2+t2/2-base::Time::fromMicroseconds(ts*1000);
+    device_time_offset = t1/2+t2/2-base::Time::fromMilliseconds(ts);
     return true;
 }
 
@@ -707,7 +707,7 @@ bool URG::readRanges(base::samples::LaserScan& range, int timeout)
 
     // subtract 3.1 ms for the difference between "back of the scanner"
     // and measurement 0
-    range.time = device_time_offset+base::Time::fromMicroseconds(device_timestamp*1000-3100);
+    range.time = device_time_offset + base::Time::fromMilliseconds(device_timestamp) - base::Time::fromMicroseconds(3100);
 
     //period of the device
     base::Time period = base::Time::fromSeconds(1.0 / (range.speed / (M_PI * 2.0)));

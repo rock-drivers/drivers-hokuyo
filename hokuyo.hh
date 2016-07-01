@@ -5,7 +5,7 @@
 #include <string>
 #include <iosfwd>
 #include <sys/types.h>
-#include <base/samples/laser_scan.h>
+#include <base/samples/LaserScan.hpp>
 #include <iodrivers_base/Driver.hpp>
 
 /** This class implements a driver for the Hokuyo laser range finders.
